@@ -199,6 +199,7 @@ textarea.i{resize:vertical;line-height:1.55}
     <span class="grow"></span>
     <span class="badge" id="testBadge" hidden>TEST MODE · drafts go to you</span>
     <span class="savestate" id="saveState"></span>
+    <span class="savestate" id="engineVer" style="min-width:0;opacity:.7"></span>
   </header>
 
   <main id="home" class="wrap"></main>
@@ -288,6 +289,7 @@ async function start() {
     store('arcKey', KEY);
     $('#login').hidden = true; $('#app').hidden = false;
     $('#testBadge').hidden = !S.settings.testMode;
+    $('#engineVer').textContent = 'Engine ' + (S.settings.engine || 'OLD — redeploy Code.gs') + (S.settings.hasClaudeKey ? '' : ' · no Claude key');
     refreshContacts(); fillSelect(); showHome();
   } catch (err) {
     if (/authori/i.test(err.message)) { store('arcKey', null); KEY = ''; $('#loginMsg').textContent = 'That key didn\'t work — please check it and try again.'; }
@@ -417,7 +419,9 @@ function renderPending() {
   $('#pendBanner').innerHTML = need ?
     '<div class="banner" style="margin-bottom:16px"><div><b>Contract read: check the details, then confirm</b><div class="small muted">Read ' + esc(new Date(r.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '. Everything is filled in below. Change anything that\'s wrong right on the page. Reminders for this file start once you confirm.</div></div>' +
     '<button class="btn primary" id="confirmBtn">Confirm</button></div>'
+    : (F.readError && (!r || F.readError.at > r.at)) ? '<div class="banner" style="margin-bottom:16px;background:#F8E6E4;border-color:#E2B8B3"><div><b>The contract couldn\'t be read</b><div class="small" style="color:#8B3A3A">' + esc(F.readError.message) + ' (' + esc(new Date(F.readError.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + ')</div></div><button class="btn" id="retryRead">Read again</button></div>'
     : F.pending ? '<div class="banner" style="margin-bottom:16px"><div><b>This contract was read with an older version</b><div class="small muted">Press Read again to fill in the file.</div></div></div>' : '';
+  const rr = $('#retryRead'); if (rr) rr.onclick = () => $('#rereadBtn') && $('#rereadBtn').click();
   const b = $('#confirmBtn');
   if (b) b.onclick = () => { F.confirmed = new Date().toISOString(); tick('Contract dates confirmed'); renderFile(); changed(); toast('Confirmed. Reminders are on for this file.'); };
 }

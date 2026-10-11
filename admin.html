@@ -319,10 +319,8 @@ $('#contractIn').addEventListener('change', async e => {
     showWorking('Reading ' + file.name + '…', 'Saving it to the file and pulling out the deal terms. This usually takes 20–40 seconds.');
     const r = await call('readContract', { id: F.id, name: file.name, mime: file.type || 'application/pdf', b64 });
     closeModal();
-    F.contractFileId = r.file.contractFileId; F.pending = r.file.pending; DOCS = r.docs;
-    tick('Executed contract received');
-    renderFile();
-    if (r.extracted) openReview(r.extracted);
+    applyServerFile(r);
+    if (r.extracted) toast('Contract read: the details are on the file. Check them, then press Confirm.');
     else toast('Contract saved. ' + (r.error || ''), true);
   } catch (err) { closeModal(); toast(err.message, true); }
 });
@@ -375,7 +373,13 @@ function setFile(file, docs) {
   F = file; DOCS = docs || []; E = {};
   $('#home').hidden = true; $('#fileView').hidden = false;
   fillSelect(); renderFile(); window.scrollTo(0, 0);
-  if (F.pending) setTimeout(() => openReview(F.pending.fields), 200);
+}
+function applyServerFile(r) {
+  F = r.file; DOCS = r.docs || DOCS; E = {}; dirty = false;
+  const i = S.files.findIndex(x => x.id === F.id);
+  const sum = { id: F.id, address: (F.property || {}).address, town: (F.property || {}).town, status: F.status, closing: F.dates.closing, pending: !!(F.reading && !F.confirmed) };
+  if (i > -1) S.files[i] = Object.assign(S.files[i], sum); else S.files.push(sum);
+  fillSelect(); renderFile();
 }
 
 /* =================== FILE VIEW =================== */
@@ -409,10 +413,13 @@ function renderFile() {
 }
 
 function renderPending() {
-  $('#pendBanner').innerHTML = F.pending ?
-    '<div class="banner" style="margin-bottom:16px"><div><b>Contract read — please check the dates</b><div class="small muted">Read from ' + esc(F.pending.source || 'the contract') + '. Nothing goes into reminders until you confirm.</div></div>' +
-    '<button class="btn gold" id="reviewBtn">Review &amp; confirm</button></div>' : '';
-  const b = $('#reviewBtn'); if (b) b.onclick = () => openReview(F.pending.fields);
+  const r = F.reading, need = r && !F.confirmed;
+  $('#pendBanner').innerHTML = need ?
+    '<div class="banner" style="margin-bottom:16px"><div><b>Contract read: check the details, then confirm</b><div class="small muted">Read ' + esc(new Date(r.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '. Everything is filled in below. Change anything that\'s wrong right on the page. Reminders for this file start once you confirm.</div></div>' +
+    '<button class="btn primary" id="confirmBtn">Confirm</button></div>'
+    : F.pending ? '<div class="banner" style="margin-bottom:16px"><div><b>This contract was read with an older version</b><div class="small muted">Press Read again to fill in the file.</div></div></div>' : '';
+  const b = $('#confirmBtn');
+  if (b) b.onclick = () => { F.confirmed = new Date().toISOString(); tick('Contract dates confirmed'); renderFile(); changed(); toast('Confirmed. Reminders are on for this file.'); };
 }
 
 function people(role) { return (F.parties || []).filter(p => p.role === role); }
@@ -425,7 +432,8 @@ function renderSummary() {
   const line = (label, v) => v ? label + ': <b>' + esc(v) + '</b><br>' : '';
   const rows = DATE_KEYS.filter(([k]) => F.dates[k] && (k === 'effective' || k === 'closing' || F.terms[k] !== false)).map(([k, l]) =>
     '<tr><td>' + esc(l) + '</td><td>' + (k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (k === 'closing' ? 'On or before ' : '') + esc(fmtShort(F.dates[k])) + '</td></tr>').join('') +
-    (F.custom || []).filter(c => c.date && c.label).map(c => '<tr><td>' + esc(c.label) + '</td><td>' + esc(fmtShort(c.date)) + '</td></tr>').join('');
+    (F.custom || []).filter(c => c.date && c.label).map(c => '<tr><td>' + esc(c.label) + '</td><td>' + esc(fmtShort(c.date)) + '</td></tr>').join('') +
+    autoDates().map(a => '<tr><td>' + esc(a.label) + '</td><td>' + esc(fmtShort(a.date)) + '</td></tr>').join('');
   $('#cSummary').innerHTML =
     '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
@@ -442,9 +450,18 @@ function renderSummary() {
   const rb = $('#rereadBtn');
   if (rb) rb.onclick = async () => {
     showWorking('Reading the contract again…', 'This usually takes 20–40 seconds.');
-    try { const r = await call('rereadContract', { id: F.id }); closeModal(); if (r.extracted) { F.pending = r.file.pending; openReview(r.extracted); } else toast(r.error, true); }
+    try { const r = await call('rereadContract', { id: F.id }); closeModal(); applyServerFile(r); if (r.extracted) toast('Contract read again: details updated. Check them, then press Confirm.'); else toast(r.error, true); }
     catch (err) { closeModal(); toast(err.message, true); }
   };
+}
+function autoDates() {
+  const u = F.utilities || {}, close = F.dates.closing, out = [];
+  if (!close) return out;
+  const before = n => { const p = close.split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2] - n)).toISOString().slice(0, 10); };
+  if (/Oil|Propane/.test(u.fuel || '')) out.push({ label: 'Fuel proration (' + u.fuel.toLowerCase() + ')', date: before(7), note: '1 week before closing' });
+  if (/Water|Sewer/.test(u.waterSewer || '')) out.push({ label: 'Final ' + u.waterSewer.replace(/ only/, '').toLowerCase() + ' reading', date: before(14), note: '2 weeks before closing' });
+  if (u.gas === 'Yes') out.push({ label: 'Gas meter reading', date: before(14), note: '2 weeks before closing' });
+  return out;
 }
 function fmtShort(s) { if (!s) return ''; const p = String(s).split('-').map(Number); return p[1] + '/' + p[2] + '/' + String(p[0]).slice(2); }
 
@@ -508,15 +525,20 @@ function renderFileInfo() {
 }
 
 function renderTerms() {
-  $('#cTerms').innerHTML = '<div class="ch"><h3>Terms</h3><span class="sub">Off = not in this contract</span></div><div class="cb">' +
+  $('#cTerms').innerHTML = '<div class="ch"><h3>Terms</h3><span class="sub">' + (F.confirmed ? 'Confirmed ' + esc(new Date(F.confirmed).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) : F.reading ? 'Not confirmed yet' : 'Off = not in this contract') + '</span></div><div class="cb">' +
     TERM_KEYS.map(([k, l]) => '<div class="tg"><div><b>' + esc(l) + '</b><div class="small muted">' + (F.dates[k] ? esc(fmt(F.dates[k], true)) : 'No date yet') + '</div></div>' +
       '<label class="sw"><input type="checkbox" data-path="terms.' + k + '"' + (F.terms[k] !== false ? ' checked' : '') + '><span></span></label></div>').join('') + '</div>';
 }
 
 function renderCal() {
   $('#cCal').innerHTML = '<div class="ch"><h3>Calendar</h3><span class="sub">Change any date here</span></div><div class="cb">' +
-    DATE_KEYS.map(([k, l]) => '<div class="calrow"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>').join('') +
+    DATE_KEYS.map(([k, l]) => '<div class="calrow" title="' + esc(((F.reading || {}).basis || {})[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>').join('') +
     (F.custom || []).map((c, i) => '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>').join('') +
+    autoDates().map(a => '<div class="calrow" title="Moves with the closing date. On this day a request email to title / attorney is drafted for you."><span>' + esc(a.label) + '<div class="small faint">' + esc(a.note) + ' · email to title / attorney</div></span><span style="padding-left:9px">' + esc(fmt(a.date, true)) + '</span><span>' + when(a.date) + '</span></div>').join('') +
+    '<div class="row3" style="margin-top:10px;grid-template-columns:1fr 1fr 1fr">' +
+      '<label class="f">Heating fuel<select class="i" data-path="utilities.fuel"><option></option>' + opt(['None', 'Oil', 'Propane', 'Oil & propane', 'Not sure'], (F.utilities || {}).fuel) + '</select></label>' +
+      '<label class="f">Water / sewer<select class="i" data-path="utilities.waterSewer"><option></option>' + opt(['Water & sewer', 'Water only', 'Sewer only', 'No — private well & septic', 'Not sure'], (F.utilities || {}).waterSewer) + '</select></label>' +
+      '<label class="f">Gas meter reading<select class="i" data-path="utilities.gas"><option></option>' + opt(['Yes', 'No', 'Not sure'], (F.utilities || {}).gas) + '</select></label></div>' +
     '<div class="btns" style="margin-top:10px"><button class="btn" id="addCustom">+ Add a date</button></div></div>';
   $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '' }); renderCal(); changed(); };
 }
@@ -616,7 +638,7 @@ function datesBlock() {
 }
 function where() { const p = F.property || {}; return [p.address, p.town, p.state].filter(Boolean).join(', ') || 'the property'; }
 function fileName() { const a = ((F.property || {}).address || '').trim(); return a ? F.id + ' - ' + a : F.id; }
-function tag() { return '[' + F.id + '] ' + ((F.property || {}).address || ''); }
+function tag() { return (F.property || {}).address || where(); }
 
 function buildEmail(kind) {
   const ours = (F.parties || []).filter(p => p.ours);
@@ -645,7 +667,7 @@ function buildEmail(kind) {
       if (F.dates.financing && F.terms.financing !== false) steps.push('Financing: the buyer\'s loan commitment is due ' + fmt(F.dates.financing, true) + '. We will let you know as soon as it arrives.');
       if (F.dates.closing) steps.push('Closing: on or before ' + fmt(F.dates.closing, true) + '. Start planning your move, and contact your utility providers to arrange final readings for closing day.');
     }
-    return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you\'re under agreement — here\'s what happens next',
+    return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you are under agreement, here is what happens next',
       body: 'Hi ' + greet + ',\n\nCongratulations — ' + where() + ' is officially under agreement! My name is Lynne, and I am the transaction coordinator working with ' + (joinNames(ours.map(p => first(p.name))) || 'your agent') + ' to keep everything on track to closing.\n\n' +
         'Important dates\n' + datesBlock() + '\n\n' +
         (steps.length ? 'What happens next\n' + steps.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\n' : '') +
@@ -720,6 +742,7 @@ function onEdit(e) {
     if (getPath(F, el.dataset.path) === val) return;
     setPath(F, el.dataset.path, val);
     if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') renderTerms();
+    if ((el.dataset.path.indexOf('utilities.') === 0 || el.dataset.path === 'dates.closing') && e.type === 'change') renderCal();
     changed(el.dataset.path);
   } else if (el.dataset.party !== undefined) {
     const p = F.parties[+el.dataset.party], k = el.dataset.pf;
@@ -819,73 +842,6 @@ function splitPeople(v) {
   return parts.length > 1 && parts.every(x => x.split(/\s+/).length >= 2) ? parts : (String(v || '').trim() ? [String(v).trim()] : []);
 }
 function closeModal() { $('#modal').hidden = true; $('#modal').innerHTML = ''; }
-
-function openReview(x) {
-  x = x || {}; const d = x.dates || {}, b = x.basis || {}, c = x.contingencies || {};
-  const inp = (id, label, val, type) => '<label class="f">' + esc(label) + '<input class="i" id="m_' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '"></label>';
-  const dateIn = (k, l) => '<label class="f" title="' + esc(b[k] || (d[k] ? '' : 'Not found in the contract')) + '">' + esc(l) + '<input class="i" type="date" id="md_' + k + '" value="' + esc(d[k] || '') + '"></label>';
-  const todos = (x.todos && x.todos.length ? x.todos : (x.notes || [])).map(t => String(t));
-  const sec = t => '<div class="small muted" style="font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:-4px">' + t + '</div>';
-  $('#modal').innerHTML = '<div class="modal"><div class="mh"><h2>Check the contract details</h2><div class="small muted">Fix anything that\'s wrong, then Confirm &amp; save. Hover a date to see where it came from.</div></div>' +
-    '<div class="mb">' +
-      sec('Property &amp; people') +
-      '<div class="mgrid">' + inp('address', 'Property address', x.address) + inp('town', 'Town', x.town) + inp('state', 'State', x.state) + inp('price', 'Price', x.price) + '</div>' +
-      '<div class="mgrid">' + inp('buyers', 'Buyer(s)', x.buyers) + inp('sellers', 'Seller(s)', x.sellers) + inp('depositAmount', 'Deposit amount', x.depositAmount) + '</div>' +
-      '<div class="mgrid">' + inp('listingAgent', 'Listing agent(s)', x.listingAgent) + inp('listingBrokerage', 'Listing brokerage', x.listingBrokerage) + inp('buyerAgent', 'Buyer\'s agent(s)', x.buyerAgent) + inp('buyerBrokerage', 'Buyer\'s brokerage', x.buyerBrokerage) + inp('titleOrAttorney', 'Title / attorney', x.titleOrAttorney) + inp('lender', 'Lender', x.lender) + '</div>' +
-      sec('Dates') +
-      '<div class="mgrid">' + DATE_KEYS.map(([k, l]) => dateIn(k, l)).join('') + '</div>' +
-      ((x.otherDeadlines || []).length ? x.otherDeadlines.map((o, i) => '<div class="calrow" style="grid-template-columns:auto 1fr 150px" title="' + esc(o.basis || '') + '"><input type="checkbox" id="mo_on' + i + '" checked><input class="i" id="mo_l' + i + '" value="' + esc(o.label || '') + '"><input class="i" type="date" id="mo_d' + i + '" value="' + esc(o.date || '') + '"></div>').join('') : '') +
-      '<div class="btns">' + ['inspection', 'dueDiligence', 'appraisal', 'financing'].map(k => '<label class="chip" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="mc_' + k + '"' + (c[k] !== false ? ' checked' : '') + '> ' + ({inspection:'Inspection', dueDiligence:'Due diligence', appraisal:'Appraisal', financing:'Financing'}[k]) + '</label>').join('') + '</div>' +
-      sec('Fees') +
-      '<div class="mgrid">' + inp('buyerFeeText', 'Seller pays buyer brokerage', x.buyerFeeText) + inp('concessions', 'Concessions', x.concessions) + '</div>' +
-      (todos.length ? sec('To-dos for this file') + '<div>' + todos.map((t, i) => '<label class="mtodo"><input type="checkbox" id="mt_' + i + '" checked> <span>' + esc(t) + '</span></label>').join('') + '</div>' : '') +
-      '<label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="m_addParties" checked> Add the people named here to Parties</label>' +
-    '</div>' +
-    '<div class="mf"><button class="btn danger" id="m_discard">Discard this reading</button><span style="flex:1"></span><button class="btn" id="m_later">Decide later</button><button class="btn primary" id="m_ok">Confirm &amp; save</button></div></div>';
-  $('#modal').hidden = false;
-  $('#m_later').onclick = closeModal;
-  $('#m_discard').onclick = () => { F.pending = null; closeModal(); renderPending(); changed(); };
-  $('#m_ok').onclick = () => {
-    const g = id => ($('#m_' + id).value || '').trim();
-    ['address', 'town', 'state', 'price'].forEach(k => { if (g(k)) F.property[k] = g(k); });
-    if (g('buyers')) F.buyers = g('buyers');
-    if (g('sellers')) F.sellers = g('sellers');
-    if (g('depositAmount')) F.depositAmount = g('depositAmount');
-    DATE_KEYS.forEach(([k]) => { const v = $('#md_' + k).value; if (v) F.dates[k] = v; });
-    ['inspection', 'dueDiligence', 'appraisal', 'financing'].forEach(k => F.terms[k] = $('#mc_' + k).checked);
-    F.contractTerms = { buyerFee: x.buyerFee || null, buyerFeeText: g('buyerFeeText'), concessions: g('concessions'), escrowAgent: x.escrowAgent || '' };
-    F.todos = F.todos || [];
-    todos.forEach((t, i) => { if ($('#mt_' + i).checked && !F.todos.some(o => o.text === t)) F.todos.push({ text: t, done: false, src: 'P&S' }); });
-    F.custom = F.custom || [];
-    (x.otherDeadlines || []).forEach((o, i) => {
-      if (!$('#mo_on' + i).checked) return;
-      const label = ($('#mo_l' + i).value || '').trim(), date = $('#mo_d' + i).value;
-      if (!label || !date) return;
-      const same = F.custom.find(c => c.label.toLowerCase() === label.toLowerCase());
-      if (same) same.date = date; else F.custom.push({ label, date });
-    });
-    if ($('#m_addParties').checked) {
-      const addP = (role, name, company) => {
-        name = String(name || '').trim(); if (!name) return;
-        if ((F.parties || []).some(p => p.role === role && p.name.toLowerCase() === name.toLowerCase())) return;
-        const p = { role, name, email: '', phone: '', company: company || '', reminders: true };
-        autofill(p, 'name'); F.parties.push(p);
-      };
-      if (!people('Buyer').length) g('buyers').split(/\s*(?:&|,| and )\s*/).forEach(n => addP('Buyer', n));
-      if (!people('Seller').length) g('sellers').split(/\s*(?:&|,| and )\s*/).forEach(n => addP('Seller', n));
-      splitPeople(g('listingAgent')).forEach(n => addP('Listing agent', n, g('listingBrokerage')));
-      splitPeople(g('buyerAgent')).forEach(n => addP('Buyer agent', n, g('buyerBrokerage')));
-      addP('Title / attorney', g('titleOrAttorney'));
-      addP('Lender', g('lender'));
-    }
-    if (['RTA – Returned to Agent', 'FC – File Complete', 'Listing Prep', 'Active Listing'].indexOf(F.status) > -1 && F.dates.effective) F.status = 'Under Agreement';
-    if (!F.service) F.service = 'Under Agreement – Contract to Close';
-    F.reminders = true; F.pending = null;
-    tick('Executed contract received'); tick('Contract dates confirmed');
-    E = {}; closeModal(); renderFile(); changed();
-    toast('Contract details saved — reminders are on for this file');
-  };
-}
 
 start();
 </script>

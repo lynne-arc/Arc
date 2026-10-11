@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>ARC · TC Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%231F2A44%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-family=%22Georgia,serif%22 font-size=%2232%22 font-weight=%22700%22 text-anchor=%22middle%22 fill=%22%23B8913A%22%3EARC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ===== ARC · Ark Royal Closings ===== */
+:root{
+  --bg:#F7F5F0; --card:#FFFFFF; --wash:#FBFAF7;
+  --ink:#1C2333; --soft:#5E6676; --faint:#9AA0AB; --line:#E6E2D9; --line2:#EFECE5;
+  --navy:#1F2A44; --navy2:#34456B; --gold:#B8913A; --goldsoft:#F6EFDD; --goldline:#E7D7B0;
+  --green:#2F6B4F; --greensoft:#E6F1EA; --amber:#9A5B13; --ambersoft:#FBF0DF; --red:#8B3A3A; --redsoft:#F8E6E4;
+  --blue:#2D5B8A; --bluesoft:#E6EEF6;
+  --serif:'Fraunces',Georgia,serif; --sans:'Inter',-apple-system,'Segoe UI',sans-serif;
+  --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--navy2)}
+[hidden]{display:none!important}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:var(--navy);color:#fff;display:flex;align-items:center;gap:12px;padding:10px 20px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;line-height:1.15;margin-right:6px;cursor:pointer}
+.brand small{font-size:10px;letter-spacing:.16em;color:var(--gold);font-weight:600}
+.brand b{font:600 17px var(--serif)}
+.top select{background:#2A3757;border:1px solid #3C4C70;color:#fff;border-radius:8px;padding:7px 10px;min-width:260px;max-width:100%}
+.top .grow{flex:1}
+.tbtn{background:transparent;border:1px solid #4A5A80;color:#fff;border-radius:8px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.tbtn:hover{background:#2A3757}
+.tbtn.gold{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:600}
+.badge{font-size:11px;font-weight:600;padding:4px 8px;border-radius:20px;background:var(--ambersoft);color:var(--amber)}
+.savestate{font-size:12px;color:#C9D0DC;min-width:70px;text-align:right}
+
+/* layout */
+.wrap{max-width:1240px;margin:0 auto;padding:22px 20px 60px}
+.grid{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);gap:18px;align-items:start}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (max-width:900px){.grid{grid-template-columns:1fr}.top select{min-width:0;flex:1}}
+
+/* cards */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.ch{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line2);background:var(--wash)}
+.ch h3{margin:0;font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.ch .sub{font-size:12px;color:var(--faint)}
+.cb{padding:14px}
+.card.email .ch{background:#F3F5F9}
+.card.email.clients .ch{background:#F8F2EE}
+.card.email.vendors .ch{background:#F3F4EE}
+.title{font:600 22px/1.2 var(--serif);margin:0 0 4px}
+.muted{color:var(--soft)} .faint{color:var(--faint)} .small{font-size:12px}
+.kv{display:grid;grid-template-columns:110px 1fr;gap:3px 10px;font-size:13px;margin:8px 0}
+.kv dt{color:var(--soft)} .kv dd{margin:0;min-width:0;overflow-wrap:anywhere}
+table.dates{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+table.dates th{text-align:left;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);font-weight:600;padding:6px 0;border-bottom:1px solid var(--line2)}
+table.dates td{padding:7px 0;border-bottom:1px solid var(--line2)}
+table.dates td:last-child{text-align:right}
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px;background:var(--line2);color:var(--soft);white-space:nowrap}
+.chip.soon{background:var(--ambersoft);color:var(--amber)} .chip.today{background:var(--redsoft);color:var(--red)}
+.chip.done{background:var(--greensoft);color:var(--green)} .chip.gold{background:var(--goldsoft);color:var(--amber)}
+.chip.navy{background:var(--navy);color:#fff}
+
+/* forms */
+label.f{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--soft);font-weight:500;min-width:0}
+input.i,select.i,textarea.i{border:1px solid var(--line);border-radius:8px;padding:7px 9px;background:#fff;font-size:13px;width:100%;min-width:0}
+input.i:focus,select.i:focus,textarea.i:focus{outline:2px solid var(--goldline);border-color:var(--gold)}
+textarea.i{resize:vertical;line-height:1.55}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px} .row3{display:grid;grid-template-columns:2fr 1fr 1fr;gap:8px}
+.stack{display:flex;flex-direction:column;gap:8px}
+.btn{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 11px;cursor:pointer;font-size:12.5px;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--navy2)}
+.btn.primary{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--navy);font-weight:600}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--soft)}
+.btn.danger{color:var(--red)}
+.btns{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+
+/* toggles */
+.tg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2)}
+.tg:last-child{border:0}
+.sw{position:relative;width:38px;height:22px;flex:none}
+.sw input{opacity:0;width:0;height:0}
+.sw span{position:absolute;inset:0;background:#D5D8DE;border-radius:20px;transition:.15s;cursor:pointer}
+.sw span:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s}
+.sw input:checked+span{background:var(--navy)} .sw input:checked+span:before{transform:translateX(16px)}
+
+/* calendar rows */
+.calrow{display:grid;grid-template-columns:1fr 150px auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--line2)}
+.calrow:last-child{border:0}
+
+/* parties */
+.party{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;background:var(--wash)}
+.party .ph{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.party .ph select{width:auto}
+.star{cursor:pointer;font-size:12px;color:var(--faint);border:1px solid var(--line);border-radius:20px;padding:2px 8px;background:#fff;white-space:nowrap}
+.star.on{background:var(--goldsoft);border-color:var(--goldline);color:var(--amber);font-weight:600}
+
+/* docs, log, checklist */
+.doc{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13px;align-items:center}
+.doc:last-child{border:0} .doc a{text-decoration:none;overflow-wrap:anywhere}
+.log{padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px}
+.log:last-child{border:0}
+.log summary{cursor:pointer;list-style:none} .log pre{white-space:pre-wrap;font:12px/1.5 var(--sans);background:var(--wash);border:1px solid var(--line2);border-radius:8px;padding:10px;margin:8px 0 0}
+.check{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13px}
+.check:last-child{border:0} .check input{margin-top:3px;accent-color:var(--navy)}
+.check.done span.l{color:var(--faint);text-decoration:line-through}
+
+/* banner */
+.banner{border:1px solid var(--goldline);background:var(--goldsoft);border-radius:var(--r);padding:14px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.banner b{font-family:var(--serif);font-size:16px}
+
+/* home */
+.hello{font:600 30px/1.15 var(--serif);margin:4px 0 2px}
+.homegrid{grid-template-columns:minmax(300px,380px) minmax(0,1fr);margin-top:16px}
+@media (max-width:900px){.homegrid{grid-template-columns:1fr}}
+.homegrid>*{min-width:0}
+.board{display:grid;grid-template-columns:repeat(4,minmax(200px,1fr));gap:12px;overflow-x:auto}
+@media (max-width:900px){.board{grid-template-columns:repeat(4,240px)}}
+.lane{border-radius:var(--r);padding:10px;min-height:120px}
+.lane h4{margin:2px 2px 10px;font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
+.lane.l0{background:#EEF0F4} .lane.l1{background:#EEF3EE} .lane.l2{background:#EDF1F7} .lane.l3{background:#F4F0E8}
+.deal{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer}
+.deal:hover{border-color:var(--navy2)}
+.deal b{font:600 15px/1.25 var(--serif);display:block}
+.up{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line2);cursor:pointer;font-size:13px}
+.up:last-child{border:0} .up:hover b{text-decoration:underline}
+
+/* modal + toast + login */
+.modalbg{position:fixed;inset:0;background:rgba(20,26,40,.45);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;overflow:auto}
+.modal{background:#fff;border-radius:14px;max-width:760px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal .mh{padding:16px 18px;border-bottom:1px solid var(--line2)} .modal .mh h2{margin:0;font:600 20px var(--serif)}
+.modal .mb{padding:16px 18px;display:flex;flex-direction:column;gap:14px}
+.modal .mf{padding:14px 18px;border-top:1px solid var(--line2);display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.mgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.basis{font-size:11px;color:var(--faint);margin-top:2px}
+.warnbox{background:var(--ambersoft);border:1px solid #EBD3B3;border-radius:10px;padding:10px 12px;font-size:13px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:10px;z-index:60;font-size:13px;max-width:90vw;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.toast.err{background:var(--red)}
+.login{min-height:100vh;display:grid;place-items:center;padding:20px;background:var(--navy)}
+.login .box{background:#fff;border-radius:16px;padding:28px;max-width:420px;width:100%}
+.login small{font-size:11px;letter-spacing:.16em;color:var(--gold);font-weight:600}
+.login h1{font:600 26px var(--serif);margin:6px 0 4px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{color:var(--faint);font-size:13px;padding:6px 0}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login" class="login" hidden>
+  <div class="box">
+    <small>ARK ROYAL CLOSINGS</small>
+    <h1>TC Dashboard</h1>
+    <p class="muted" id="loginMsg">Enter your admin key (it's in the "ARC backend is set up" email).</p>
+    <form id="loginForm" class="stack">
+      <input class="i" id="keyIn" type="password" autocomplete="current-password" placeholder="Admin key" required>
+      <button class="btn primary" type="submit">Open dashboard</button>
+    </form>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" hidden>
+  <header class="top">
+    <div class="brand" id="homeBtn" title="Home"><small>ARK ROYAL CLOSINGS</small><b>TC Dashboard</b></div>
+    <select id="fileSel" aria-label="Choose a file"></select>
+    <button class="tbtn" id="newBtn">+ New file</button>
+    <label class="tbtn gold" title="Upload an executed P&S — it will be read and the dates filled in for you">Read a new contract<input type="file" id="contractIn" accept="application/pdf,image/*" hidden></label>
+    <span class="grow"></span>
+    <span class="badge" id="testBadge" hidden>TEST MODE · drafts go to you</span>
+    <span class="savestate" id="saveState"></span>
+  </header>
+
+  <main id="home" class="wrap"></main>
+  <main id="fileView" class="wrap" hidden></main>
+</div>
+
+<div id="modal" class="modalbg" hidden></div>
+<div id="toast" class="toast" hidden></div>
+<datalist id="dlNames"></datalist>
+<datalist id="dlEmails"></datalist>
+
+<script>
+/* =================== SETTINGS =================== */
+// ⬇⬇ Paste your Google Web app URL between the quotes (Deploy → Manage deployments → Web app URL) ⬇⬇
+const API = 'https://script.google.com/macros/s/AKfycbx81JFQPKRtcY0XmiOCANgkdkQhNghF22x-QMlSxHh4TNp6EapVt9kXC_qurvegr_Q/exec';
+// ⬆⬆ ----------------------------------------------------------------------------------------- ⬆⬆
+
+const OWNER = 'lynne@arkroyalclosings.com';
+const SIGNATURE = '\n\nCheers!\nLynne Pinette\nArk Royal Closings\n603-343-3688 · lynne@arkroyalclosings.com\narkroyalclosings.com';
+const DATE_KEYS = [['effective','Effective date'],['deposit','Earnest money deposit'],['inspection','Inspection'],['dueDiligence','Due diligence'],['appraisal','Appraisal'],['financing','Financing commitment'],['closing','Closing']];
+const TERM_KEYS = [['deposit','Deposit'],['inspection','Inspection'],['dueDiligence','Due diligence'],['appraisal','Appraisal'],['financing','Financing']];
+const SERVICES = ['Listing – Compliance / Paperwork Only','Listing – Full Listing Setup','Under Agreement – Contract to Close'];
+const REPS = ['Buyer side','Seller side','Both sides','Transaction Facilitator'];
+const DOC_GROUPS = ['Contract','Shared with client','Agent uploads','Client uploads','ARC internal'];
+const LANES = [
+  ['Intake', ['RTA – Returned to Agent','FC – File Complete']],
+  ['Listings', ['Listing Prep','Active Listing']],
+  ['Under agreement', ['Under Agreement','Clear to Close']],
+  ['Closed & other', ['Closed','Fell Through','On Hold']],
+];
+
+/* =================== STATE =================== */
+let KEY = store('arcKey') || '';
+let S = { files: [], contacts: [], settings: {}, upcoming: [] };
+let F = null, DOCS = [], E = {}, saveTimer = null, saving = false, dirty = false;
+
+/* =================== HELPERS =================== */
+const $ = s => document.querySelector(s);
+function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function today() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function ymd(s) { const p = String(s).split('-').map(Number); return Date.UTC(p[0], p[1]-1, p[2]); }
+function days(s) { return Math.round((ymd(s) - ymd(today())) / 86400000); }
+function fmt(s, long) {
+  if (!s) return '';
+  const p = String(s).split('-').map(Number), d = new Date(Date.UTC(p[0], p[1]-1, p[2], 12));
+  const wd = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d.getUTCDay()];
+  return wd + ' ' + p[1] + '/' + p[2] + (long ? '/' + p[0] : '');
+}
+function money(v) { const n = Number(String(v || '').replace(/[^0-9.]/g, '')); return n ? '$' + n.toLocaleString('en-US', {maximumFractionDigits: 0}) : (v || ''); }
+function when(s) {
+  const n = days(s);
+  if (n < 0) return '<span class="chip done">Done</span>';
+  if (n === 0) return '<span class="chip today">Today</span>';
+  if (n <= 3) return '<span class="chip soon">' + (n === 1 ? 'Tomorrow' : 'In ' + n + ' days') + '</span>';
+  return '<span class="chip">In ' + n + ' days</span>';
+}
+function getPath(o, p) { return p.split('.').reduce((a, k) => a == null ? a : a[k], o); }
+function setPath(o, p, v) { const ks = p.split('.'), last = ks.pop(); const t = ks.reduce((a, k) => (a[k] = a[k] || {}), o); t[last] = v; }
+function toast(msg, err) { const t = $('#toast'); t.textContent = msg; t.className = 'toast' + (err ? ' err' : ''); t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, err ? 6000 : 2800); }
+function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+function first(name) { return String(name || '').trim().split(/\s+/)[0] || ''; }
+function joinNames(list) { list = list.filter(Boolean); return list.length < 2 ? (list[0] || '') : list.slice(0, -1).join(', ') + ' & ' + list[list.length-1]; }
+
+async function call(action, payload) {
+  if (/PASTE_YOUR/.test(API)) throw new Error('This page still needs your Web app URL — see step 7 of the setup guide.');
+  const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action, key: KEY }, payload || {})) });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'Something went wrong');
+  return j.data;
+}
+function fileToB64(file) {
+  return new Promise((ok, bad) => {
+    if (file.size > 15 * 1048576) return bad(new Error('Please keep files under 15 MB.'));
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(',')[1]);
+    r.onerror = () => bad(new Error('Could not read that file.'));
+    r.readAsDataURL(file);
+  });
+}
+
+/* =================== START =================== */
+$('#loginForm').addEventListener('submit', e => { e.preventDefault(); KEY = $('#keyIn').value.trim(); start(); });
+async function start() {
+  if (!KEY) { $('#login').hidden = false; return; }
+  try {
+    S = await call('boot');
+    store('arcKey', KEY);
+    $('#login').hidden = true; $('#app').hidden = false;
+    $('#testBadge').hidden = !S.settings.testMode;
+    refreshContacts(); fillSelect(); showHome();
+  } catch (err) {
+    if (/authori/i.test(err.message)) { store('arcKey', null); KEY = ''; $('#loginMsg').textContent = 'That key didn\'t work — please check it and try again.'; }
+    else $('#loginMsg').textContent = err.message;
+    $('#login').hidden = false; $('#app').hidden = true;
+  }
+}
+
+function fillSelect() {
+  const sel = $('#fileSel');
+  sel.innerHTML = '<option value="">⌂ Home — all files</option>' + S.files.slice().reverse().map(f =>
+    '<option value="' + esc(f.id) + '">' + esc(f.id + ' · ' + (f.address || 'New file') + (f.town ? ', ' + f.town : '') + ' · ' + f.status) + (f.pending ? ' · ⚑ review' : '') + '</option>').join('');
+  sel.value = F ? F.id : '';
+}
+$('#fileSel').addEventListener('change', e => e.target.value ? openFile(e.target.value) : showHome());
+$('#homeBtn').addEventListener('click', () => showHome());
+$('#newBtn').addEventListener('click', async () => {
+  await flush();
+  try { const r = await call('newFile'); S.files.push(r.summary); setFile(r.file, r.docs); fillSelect(); toast('New file ' + r.file.id + ' created'); }
+  catch (err) { toast(err.message, true); }
+});
+$('#contractIn').addEventListener('change', async e => {
+  const file = e.target.files[0]; e.target.value = '';
+  if (!file) return;
+  await flush();
+  try {
+    if (!F) { const r = await call('newFile'); S.files.push(r.summary); setFile(r.file, r.docs); fillSelect(); }
+    const b64 = await fileToB64(file);
+    showWorking('Reading ' + file.name + '…', 'Saving it to the file and pulling out the deal terms. This usually takes 20–40 seconds.');
+    const r = await call('readContract', { id: F.id, name: file.name, mime: file.type || 'application/pdf', b64 });
+    closeModal();
+    F.contractFileId = r.file.contractFileId; F.pending = r.file.pending; DOCS = r.docs;
+    tick('Executed contract received');
+    renderFile();
+    if (r.extracted) openReview(r.extracted);
+    else toast('Contract saved. ' + (r.error || ''), true);
+  } catch (err) { closeModal(); toast(err.message, true); }
+});
+
+/* =================== HOME =================== */
+async function showHome() {
+  await flush();
+  F = null; $('#fileView').hidden = true; $('#home').hidden = false; fillSelect();
+  try { const b = await call('boot'); S = b; refreshContacts(); fillSelect(); } catch (e) {}
+  const h = new Date().getHours();
+  const hi = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const pend = S.files.filter(f => f.pending);
+  const lanes = LANES.map((l, i) => {
+    const items = S.files.filter(f => l[1].indexOf(f.status) > -1);
+    return '<div class="lane l' + i + '"><h4>' + esc(l[0]) + ' · ' + items.length + '</h4>' +
+      (items.length ? items.map(f => '<div class="deal" data-open="' + esc(f.id) + '"><b>' + esc(f.address || 'New file') + '</b>' +
+        '<div class="small muted">' + esc([f.town, f.agent].filter(Boolean).join(' · ')) + '</div>' +
+        '<div class="small" style="margin-top:6px;display:flex;justify-content:space-between;gap:6px">' +
+        '<span class="faint">' + esc(f.id) + '</span>' + (f.closing ? '<span>Closes ' + esc(fmt(f.closing)) + '</span>' : '') + '</div>' +
+        (f.pending ? '<div style="margin-top:6px"><span class="chip gold">⚑ Review contract dates</span></div>' : '') + '</div>').join('')
+        : '<div class="empty">Nothing here.</div>') + '</div>';
+  }).join('');
+  $('#home').innerHTML =
+    '<div class="muted">' + new Date().toLocaleDateString('en-US', {weekday:'long', month:'long', day:'numeric'}) + '</div>' +
+    '<h1 class="hello">' + hi + ', Lynne.</h1>' +
+    '<p class="muted" style="margin-top:0">' + plural(S.files.filter(f => !/Closed|Fell Through/.test(f.status)).length, 'open file') + ' · ' +
+      plural(S.upcoming.filter(u => u.days >= 0 && u.days <= 3).length, 'deadline') + ' in the next 3 days</p>' +
+    (pend.length ? '<div class="banner" style="margin:16px 0"><div><b>' + pend.length + ' contract' + (pend.length > 1 ? 's' : '') + ' read and waiting for you</b><div class="small muted">Check the dates before they go into reminders.</div></div>' +
+      '<div class="btns">' + pend.map(f => '<button class="btn gold" data-open="' + esc(f.id) + '">' + esc(f.address || f.id) + '</button>').join('') + '</div></div>' : '') +
+    '<div class="grid homegrid">' +
+      '<div class="card"><div class="ch"><h3>Deadlines · next 14 days</h3></div><div class="cb">' +
+        (S.upcoming.length ? S.upcoming.map(u => '<div class="up" data-open="' + esc(u.id) + '"><div><b>' + esc(u.address || u.id) + '</b><div class="small muted">' + esc(u.label) + '</div></div>' +
+          '<div style="text-align:right"><div>' + esc(fmt(u.date)) + '</div>' + when(u.date) + '</div></div>').join('') : '<div class="empty">No deadlines in the next two weeks.</div>') +
+      '</div></div>' +
+      '<div class="board">' + lanes + '</div>' +
+    '</div>' +
+    (S.files.length ? '' : '<div class="banner" style="margin-top:18px"><div><b>Welcome to your TC Dashboard</b><div class="small muted">Start with "+ New file", "Read a new contract", or send an agent your File Input page.</div></div></div>');
+}
+document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
+
+/* =================== OPEN A FILE =================== */
+async function openFile(id) {
+  await flush();
+  $('#saveState').textContent = 'Loading…';
+  try { const r = await call('get', { id }); setFile(r.file, r.docs); }
+  catch (err) { toast(err.message, true); }
+  $('#saveState').textContent = '';
+}
+function setFile(file, docs) {
+  F = file; DOCS = docs || []; E = {};
+  $('#home').hidden = true; $('#fileView').hidden = false;
+  fillSelect(); renderFile(); window.scrollTo(0, 0);
+  if (F.pending) setTimeout(() => openReview(F.pending.fields), 200);
+}
+
+/* =================== FILE VIEW =================== */
+function renderFile() {
+  $('#fileView').innerHTML =
+    '<div id="pendBanner"></div>' +
+    '<div class="grid">' +
+      '<div class="col">' +
+        '<section class="card" id="cSummary"></section>' +
+        '<section class="card" id="cFile"></section>' +
+        '<section class="card" id="cTerms"></section>' +
+        '<section class="card" id="cCal"></section>' +
+        '<section class="card" id="cParties"></section>' +
+        '<section class="card" id="cDocs"></section>' +
+      '</div>' +
+      '<div class="col">' +
+        '<section class="card email agents" id="e_agents"></section>' +
+        '<section class="card email clients" id="e_clients"></section>' +
+        '<section class="card email vendors" id="e_vendors"></section>' +
+        '<section class="card" id="cLog"></section>' +
+        '<section class="card" id="cCheck"></section>' +
+        '<section class="card" id="cNotes"></section>' +
+      '</div>' +
+    '</div>';
+  renderPending(); renderSummary(); renderFileInfo(); renderTerms(); renderCal(); renderParties(); renderDocs();
+  ['agents', 'clients', 'vendors'].forEach(renderEmail); renderLog(); renderCheck(); renderNotes();
+}
+
+function renderPending() {
+  $('#pendBanner').innerHTML = F.pending ?
+    '<div class="banner" style="margin-bottom:16px"><div><b>Contract read — please check the dates</b><div class="small muted">Read from ' + esc(F.pending.source || 'the contract') + '. Nothing goes into reminders until you confirm.</div></div>' +
+    '<button class="btn gold" id="reviewBtn">Review &amp; confirm</button></div>' : '';
+  const b = $('#reviewBtn'); if (b) b.onclick = () => openReview(F.pending.fields);
+}
+
+function people(role) { return (F.parties || []).filter(p => p.role === role); }
+function names(role) { return joinNames(people(role).map(p => p.name)); }
+
+function renderSummary() {
+  const p = F.property || {}, contract = DOCS.find(d => d.id === F.contractFileId);
+  const cont = TERM_KEYS.filter(([k]) => k !== 'deposit' && F.terms[k] !== false).map(t => t[1]);
+  const rows = DATE_KEYS.filter(([k]) => F.dates[k] && (k === 'effective' || k === 'closing' || F.terms[k] !== false)).map(([k, l]) =>
+    '<tr><td>' + esc(l) + '</td><td>' + (k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ' · ' : '') + (k === 'closing' ? 'On or before ' : '') + esc(fmt(F.dates[k], true)) + '</td><td>' + (k === 'effective' ? '' : when(F.dates[k])) + '</td></tr>').join('');
+  $('#cSummary').innerHTML =
+    '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
+    '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
+    '<div class="muted small">' + esc(F.status) + (p.price ? ' · ' + esc(money(p.price)) : '') + (F.rep ? ' · ' + esc(F.rep) : '') + '</div>' +
+    '<dl class="kv">' +
+      '<dt>Buyer</dt><dd>' + esc(F.buyers || names('Buyer') || '—') + '</dd>' +
+      '<dt>Seller</dt><dd>' + esc(F.sellers || names('Seller') || '—') + '</dd>' +
+      '<dt>Listing agent</dt><dd>' + esc(people('Listing agent').map(a => a.name + (a.company ? ' · ' + a.company : '')).join('; ') || '—') + '</dd>' +
+      '<dt>Buyer\'s agent</dt><dd>' + esc(people('Buyer agent').map(a => a.name + (a.company ? ' · ' + a.company : '')).join('; ') || '—') + '</dd>' +
+      '<dt>Contingencies</dt><dd>' + esc(cont.join(', ') || 'None') + '</dd>' +
+    '</dl>' +
+    (rows ? '<table class="dates"><tr><th>Item</th><th>Date</th><th></th></tr>' + rows + '</table>' : '<div class="empty">No dates yet — read the contract or fill in the Calendar.</div>') +
+    '<div class="btns" style="margin-top:12px">' +
+      (contract ? '<a class="btn" href="' + esc(contract.url) + '" target="_blank" rel="noopener">View contract</a>' : '') +
+      (F.contractFileId ? '<button class="btn ghost" id="rereadBtn">Read again</button>' : '') +
+    '</div></div>';
+  const rb = $('#rereadBtn');
+  if (rb) rb.onclick = async () => {
+    showWorking('Reading the contract again…', 'This usually takes 20–40 seconds.');
+    try { const r = await call('rereadContract', { id: F.id }); closeModal(); if (r.extracted) { F.pending = r.file.pending; openReview(r.extracted); } else toast(r.error, true); }
+    catch (err) { closeModal(); toast(err.message, true); }
+  };
+}
+
+function opt(list, v) { return list.map(o => '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join(''); }
+function fld(label, path, type, extra) {
+  const v = getPath(F, path); return '<label class="f">' + esc(label) + '<input class="i" data-path="' + path + '" type="' + (type || 'text') + '" value="' + esc(v == null ? '' : v) + '"' + (extra || '') + '></label>';
+}
+function renderFileInfo() {
+  $('#cFile').innerHTML = '<div class="ch"><h3>File</h3><span class="sub">Created ' + esc(fmt(F.created, true)) + '</span></div><div class="cb stack">' +
+    '<label class="f">Status<select class="i" data-path="status">' + opt(S.settings.statuses || [], F.status) + '</select></label>' +
+    '<div class="row2"><label class="f">Service<select class="i" data-path="service"><option></option>' + opt(SERVICES, F.service) + '</select></label>' +
+    '<label class="f">Representation<select class="i" data-path="rep"><option></option>' + opt(REPS, F.rep) + '</select></label></div>' +
+    fld('Property address', 'property.address') +
+    '<div class="row3">' + fld('Town', 'property.town') + fld('State', 'property.state') + fld('MLS #', 'property.mls') + '</div>' +
+    '<div class="row2">' + fld('Price', 'property.price') + fld('Deposit amount', 'depositAmount') + '</div>' +
+    fld('Buyer name(s)', 'buyers') + fld('Seller name(s)', 'sellers') +
+    '<div class="tg"><span>Morning deadline reminders for this file</span><label class="sw"><input type="checkbox" data-path="reminders"' + (F.reminders ? ' checked' : '') + '><span></span></label></div>' +
+    '</div>';
+}
+
+function renderTerms() {
+  $('#cTerms').innerHTML = '<div class="ch"><h3>Terms</h3><span class="sub">Off = not in this contract</span></div><div class="cb">' +
+    TERM_KEYS.map(([k, l]) => '<div class="tg"><div><b>' + esc(l) + '</b><div class="small muted">' + (F.dates[k] ? esc(fmt(F.dates[k], true)) : 'No date yet') + '</div></div>' +
+      '<label class="sw"><input type="checkbox" data-path="terms.' + k + '"' + (F.terms[k] !== false ? ' checked' : '') + '><span></span></label></div>').join('') + '</div>';
+}
+
+function renderCal() {
+  $('#cCal').innerHTML = '<div class="ch"><h3>Calendar</h3><span class="sub">Change any date here</span></div><div class="cb">' +
+    DATE_KEYS.map(([k, l]) => '<div class="calrow"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>').join('') +
+    (F.custom || []).map((c, i) => '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>').join('') +
+    '<div class="btns" style="margin-top:10px"><button class="btn" id="addCustom">+ Add a date</button></div></div>';
+  $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '' }); renderCal(); changed(); };
+}
+
+function renderParties() {
+  const roles = S.settings.roles || [];
+  $('#cParties').innerHTML = '<div class="ch"><h3>Parties</h3><span class="sub">Saved to your contacts automatically</span></div><div class="cb">' +
+    ((F.parties || []).map((p, i) =>
+      '<div class="party"><div class="ph"><select class="i" data-party="' + i + '" data-pf="role">' + opt(roles, p.role) + '</select>' +
+      '<span class="star' + (p.ours ? ' on' : '') + '" data-ours="' + i + '" title="The agent ARC is working for">' + (p.ours ? '★ Our agent' : '☆ Our agent') + '</span>' +
+      '<span class="grow" style="flex:1"></span><button class="btn ghost danger" data-delparty="' + i + '" title="Remove">✕</button></div>' +
+      '<div class="stack">' +
+        '<input class="i" list="dlNames" data-party="' + i + '" data-pf="name" value="' + esc(p.name) + '" placeholder="Name — start typing to pick a saved contact">' +
+        '<div class="row2"><input class="i" list="dlEmails" type="email" data-party="' + i + '" data-pf="email" value="' + esc(p.email) + '" placeholder="Email">' +
+        '<input class="i" data-party="' + i + '" data-pf="phone" value="' + esc(p.phone) + '" placeholder="Phone"></div>' +
+        '<input class="i" data-party="' + i + '" data-pf="company" value="' + esc(p.company) + '" placeholder="Company / brokerage">' +
+        '<label class="small muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-party="' + i + '" data-pf="reminders"' + (p.reminders !== false ? ' checked' : '') + '> Gets deadline reminders</label>' +
+      '</div></div>').join('') || '<div class="empty">No one on this file yet.</div>') +
+    '<div class="btns" style="margin-top:6px"><select class="i" id="newRole" style="width:auto">' + opt(roles, 'Buyer') + '</select><button class="btn" id="addParty">+ Add person</button></div></div>';
+  $('#addParty').onclick = () => { F.parties = F.parties || []; F.parties.push({ role: $('#newRole').value, name: '', email: '', phone: '', company: '', reminders: true }); renderParties(); changed(); };
+}
+
+function renderDocs() {
+  $('#cDocs').innerHTML = '<div class="ch"><h3>Documents</h3><span class="sub">Saved in Drive › Transactions › ' + esc(F.id) + '</span></div><div class="cb">' +
+    (DOCS.length ? DOCS.map(d => '<div class="doc"><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.name) + '</a><span class="chip">' + esc(d.group) + '</span></div>').join('') : '<div class="empty">No documents yet.</div>') +
+    '<div class="btns" style="margin-top:10px"><select class="i" id="docGroup" style="width:auto">' + opt(DOC_GROUPS, 'ARC internal') + '</select>' +
+    '<label class="btn">Upload<input type="file" id="docIn" hidden></label><span class="small faint" id="docMsg"></span></div></div>';
+  $('#docIn').onchange = async e => {
+    const file = e.target.files[0]; e.target.value = ''; if (!file) return;
+    $('#docMsg').innerHTML = '<span class="spin"></span> Uploading…';
+    try { const b64 = await fileToB64(file); const r = await call('upload', { id: F.id, name: file.name, mime: file.type, b64, group: $('#docGroup').value }); DOCS = r.docs; renderDocs(); toast(file.name + ' saved'); }
+    catch (err) { $('#docMsg').textContent = ''; toast(err.message, true); }
+  };
+}
+
+/* =================== EMAILS =================== */
+function partiesByRoles(roles) { return (F.parties || []).filter(p => roles.indexOf(p.role) > -1); }
+function emailsOf(list) { return Array.from(new Set(list.map(p => p.email).filter(Boolean))).join(', '); }
+function clientRoles() {
+  if (F.rep === 'Buyer side') return ['Buyer'];
+  if (F.rep === 'Seller side') return ['Seller'];
+  if (F.rep === 'Both sides') return ['Buyer', 'Seller'];
+  const ours = (F.parties || []).find(p => p.ours);
+  if (ours) return [ours.role === 'Buyer agent' ? 'Buyer' : 'Seller'];
+  return ['Buyer', 'Seller'];
+}
+function whoIsWho(withContacts) {
+  const line = (label, list) => list.length ? label + ': ' + list.map(p => p.name + (p.company ? ', ' + p.company : '') + (withContacts && (p.email || p.phone) ? ' (' + [p.email, p.phone].filter(Boolean).join(' · ') + ')' : '')).join('; ') : '';
+  return [
+    'Buyer: ' + (F.buyers || names('Buyer') || 'TBD'),
+    'Seller: ' + (F.sellers || names('Seller') || 'TBD'),
+    line('Listing agent', people('Listing agent')),
+    line("Buyer's agent", people('Buyer agent')),
+    line('Title / attorney', people('Title / attorney')),
+    line('Lender', people('Lender')),
+  ].filter(Boolean).join('\n');
+}
+function datesBlock() {
+  const rows = DATE_KEYS.filter(([k]) => F.dates[k] && (k === 'effective' || k === 'closing' || F.terms[k] !== false)).map(([k, l]) => {
+    if (k === 'deposit') return 'Earnest money deposit: ' + (F.depositAmount ? money(F.depositAmount) + ' due ' : '') + fmt(F.dates[k], true);
+    if (k === 'closing') return 'Closing: on or before ' + fmt(F.dates[k], true);
+    if (k === 'effective') return 'Effective date: ' + fmt(F.dates[k], true);
+    return l + ' deadline: ' + fmt(F.dates[k], true);
+  }).concat((F.custom || []).filter(c => c.date && c.label).map(c => c.label + ': ' + fmt(c.date, true)));
+  return rows.length ? rows.join('\n') : '(dates to follow)';
+}
+function where() { const p = F.property || {}; return [p.address, p.town, p.state].filter(Boolean).join(', ') || 'the property'; }
+function tag() { return '[' + F.id + '] ' + ((F.property || {}).address || ''); }
+
+function buildEmail(kind) {
+  const ours = (F.parties || []).filter(p => p.ours);
+  if (kind === 'agents') {
+    const to = partiesByRoles(['Listing agent', 'Buyer agent']);
+    return { to: emailsOf(to), cc: '', subject: tag() + ': under agreement',
+      body: 'Hello all,\n\n' + where() + ' is officially under agreement! Here are the deal and the dates that matter. Please add the dates to your calendar, and contact me with any questions.\n\n' +
+        'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
+        '\n\nThe executed contract is on file with me. Please copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
+  }
+  if (kind === 'clients') {
+    const roles = clientRoles(), to = partiesByRoles(roles), buyerSide = roles.indexOf('Buyer') > -1 && roles.length === 1;
+    const sellerSide = roles.indexOf('Seller') > -1 && roles.length === 1;
+    const greet = joinNames(to.map(p => first(p.name))) || 'there';
+    const steps = [];
+    if (buyerSide) {
+      if (F.dates.deposit && F.terms.deposit !== false) steps.push('Deposit: your earnest money deposit' + (F.depositAmount ? ' of ' + money(F.depositAmount) : '') + ' is due ' + fmt(F.dates.deposit, true) + '. We will confirm once it is received.');
+      if (F.dates.inspection && F.terms.inspection !== false) steps.push('Inspection: your inspection window closes ' + fmt(F.dates.inspection, true) + '. Your agent will coordinate access and go over the results with you.');
+      if (F.dates.dueDiligence && F.terms.dueDiligence !== false) steps.push('Due diligence: anything else you want to check must be done by ' + fmt(F.dates.dueDiligence, true) + '.');
+      if (F.dates.appraisal && F.terms.appraisal !== false) steps.push('Appraisal: your lender will order the appraisal, due by ' + fmt(F.dates.appraisal, true) + '.');
+      if (F.dates.financing && F.terms.financing !== false) steps.push('Financing: your loan commitment is due ' + fmt(F.dates.financing, true) + '. Please answer your lender\'s document requests quickly — this is the step that most often causes delays.');
+      if (F.dates.closing) steps.push('Closing: on or before ' + fmt(F.dates.closing, true) + '. Your agent will confirm the final walk-through and closing time.');
+    } else {
+      if (F.dates.inspection && F.terms.inspection !== false) steps.push('Inspection: the buyer\'s inspection period runs until ' + fmt(F.dates.inspection, true) + '. Your agent will arrange access — please keep the home ready to show.');
+      if (F.dates.appraisal && F.terms.appraisal !== false) steps.push('Appraisal: the buyer\'s lender will send an appraiser before ' + fmt(F.dates.appraisal, true) + '.');
+      if (F.dates.financing && F.terms.financing !== false) steps.push('Financing: the buyer\'s loan commitment is due ' + fmt(F.dates.financing, true) + '. We will let you know as soon as it arrives.');
+      if (F.dates.closing) steps.push('Closing: on or before ' + fmt(F.dates.closing, true) + '. Start planning your move, and contact your utility providers to arrange final readings for closing day.');
+    }
+    return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you\'re under agreement — here\'s what happens next',
+      body: 'Hi ' + greet + ',\n\nCongratulations — ' + where() + ' is officially under agreement! My name is Lynne, and I am the transaction coordinator working with ' + (joinNames(ours.map(p => first(p.name))) || 'your agent') + ' to keep everything on track to closing.\n\n' +
+        'Important dates\n' + datesBlock() + '\n\n' +
+        (steps.length ? 'What happens next\n' + steps.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\n' : '') +
+        'IMPORTANT — wire fraud: I will never send or change wiring instructions by email. Before you send any money, always call your closing attorney or title company at a phone number you already know.\n\n' +
+        'Please add these dates to your calendar, and reply with any questions — no question is too small.' + SIGNATURE };
+  }
+  const to = partiesByRoles(['Title / attorney', 'Lender']);
+  return { to: emailsOf(to), cc: emailsOf(partiesByRoles(['Listing agent', 'Buyer agent'])), subject: tag() + ': under agreement',
+    body: 'Hello all,\n\n' + where() + ' is under agreement. Here is everyone on the deal and how to reach them, along with the key dates. Please confirm receipt and let me know what you need from us.\n\n' +
+      'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
+      '\n\nThe executed contract will follow separately. Please copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
+}
+const EMAIL_META = {
+  agents: ['Email · Agents', 'To the agents on the deal'],
+  clients: ['Email · Clients', 'You are under agreement — here is what happens next'],
+  vendors: ['Email · Title & lender', 'To the closing team'],
+};
+function renderEmail(kind) {
+  E[kind] = E[kind] || { touched: false };
+  if (!E[kind].touched) E[kind].v = buildEmail(kind);
+  const v = E[kind].v;
+  $('#e_' + kind).innerHTML = '<div class="ch"><div><h3>' + EMAIL_META[kind][0] + '</h3><div style="font:600 15px var(--serif);margin-top:2px">' + esc(EMAIL_META[kind][1]) + '</div></div>' +
+    '<div class="btns"><button class="btn" data-ecopy="' + kind + '">Copy</button><button class="btn" data-egmail="' + kind + '">Open in Gmail</button><button class="btn primary" data-edraft="' + kind + '">Save as draft</button></div></div>' +
+    '<div class="cb stack">' +
+      '<div class="row2"><label class="f">To<input class="i" data-email="' + kind + '" data-ef="to" value="' + esc(v.to) + '" placeholder="Add emails in Parties"></label>' +
+      '<label class="f">Cc<input class="i" data-email="' + kind + '" data-ef="cc" value="' + esc(v.cc) + '"></label></div>' +
+      '<label class="f">Subject<input class="i" data-email="' + kind + '" data-ef="subject" value="' + esc(v.subject) + '"></label>' +
+      '<textarea class="i" rows="14" data-email="' + kind + '" data-ef="body">' + esc(v.body) + '</textarea>' +
+      '<div class="small faint">' + (E[kind].touched ? 'Edited by you · <a href="#" data-ereset="' + kind + '">reset to the file\'s details</a>' : 'Updates automatically as you change the file.') + '</div>' +
+    '</div>';
+}
+
+function renderLog() {
+  const list = F.emails || [];
+  $('#cLog').innerHTML = '<div class="ch"><h3>Email log</h3><span class="sub">' + list.length + ' on this file</span></div><div class="cb">' +
+    (list.length ? list.slice(0, 40).map(m => '<details class="log"><summary><b>' + esc(m.subject) + '</b><div class="small muted">' + esc(new Date(m.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + ' · ' + esc(m.status) + ' · to ' + esc(m.to || '—') + '</div></summary><pre>' + esc(m.body || '') + '</pre></details>').join('')
+      : '<div class="empty">Drafts and reminders for this file will be listed here.</div>') + '</div>';
+}
+
+function renderCheck() {
+  const n = (F.checklist || []).filter(c => c.done).length;
+  $('#cCheck').innerHTML = '<div class="ch"><h3>Checklist</h3><span class="sub">' + n + ' of ' + (F.checklist || []).length + ' done</span></div><div class="cb">' +
+    (F.checklist || []).map((c, i) => '<label class="check' + (c.done ? ' done' : '') + '"><input type="checkbox" data-check="' + i + '"' + (c.done ? ' checked' : '') + '><span style="flex:1"><span class="l">' + esc(c.label) + '</span>' +
+      (c.done && c.at ? '<div class="small faint">' + esc(new Date(c.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '</div>' : '') + '</span></label>').join('') +
+    '<div class="btns" style="margin-top:8px"><input class="i" id="newCheck" placeholder="Add a checklist item" style="flex:1"><button class="btn" id="addCheck">Add</button></div></div>';
+  $('#addCheck').onclick = () => { const v = $('#newCheck').value.trim(); if (!v) return; F.checklist.push({ label: v, done: false, at: '' }); renderCheck(); changed(); };
+}
+
+function renderNotes() {
+  $('#cNotes').innerHTML = '<div class="ch"><h3>Notes</h3><span class="sub">Private to you</span></div><div class="cb">' +
+    '<textarea class="i" rows="6" data-path="notes" placeholder="Anything you want to remember about this file">' + esc(F.notes || '') + '</textarea></div>';
+}
+function tick(label) { const c = (F.checklist || []).find(x => x.label === label); if (c && !c.done) { c.done = true; c.at = new Date().toISOString(); } }
+
+/* =================== EDITING + SAVING =================== */
+const fv = $('#fileView');
+fv.addEventListener('input', onEdit);
+fv.addEventListener('change', onEdit);
+function onEdit(e) {
+  const el = e.target;
+  if (el.dataset.path) {
+    const val = el.type === 'checkbox' ? el.checked : el.value;
+    if (getPath(F, el.dataset.path) === val) return;
+    setPath(F, el.dataset.path, val);
+    if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') renderTerms();
+    changed(el.dataset.path);
+  } else if (el.dataset.party !== undefined) {
+    const p = F.parties[+el.dataset.party], k = el.dataset.pf;
+    p[k] = el.type === 'checkbox' ? el.checked : el.value;
+    if (e.type === 'change' && (k === 'name' || k === 'email')) autofill(p, k) && renderParties();
+    changed();
+  } else if (el.dataset.custom !== undefined) {
+    F.custom[+el.dataset.custom][el.dataset.cf] = el.value; changed();
+  } else if (el.dataset.check !== undefined && e.type === 'change') {
+    const c = F.checklist[+el.dataset.check]; c.done = el.checked; c.at = el.checked ? new Date().toISOString() : ''; renderCheck(); changed();
+  } else if (el.dataset.email) {
+    E[el.dataset.email].v[el.dataset.ef] = el.value;
+    if (!E[el.dataset.email].touched) { E[el.dataset.email].touched = true; }
+  }
+}
+fv.addEventListener('click', async e => {
+  const t = e.target;
+  if (t.dataset.delparty !== undefined) { F.parties.splice(+t.dataset.delparty, 1); renderParties(); changed(); }
+  else if (t.dataset.ours !== undefined) { const p = F.parties[+t.dataset.ours]; p.ours = !p.ours; renderParties(); changed(); }
+  else if (t.dataset.delcustom !== undefined) { F.custom.splice(+t.dataset.delcustom, 1); renderCal(); changed(); }
+  else if (t.dataset.ereset) { e.preventDefault(); E[t.dataset.ereset].touched = false; renderEmail(t.dataset.ereset); }
+  else if (t.dataset.ecopy) { const v = E[t.dataset.ecopy].v; try { await navigator.clipboard.writeText(v.body); toast('Email text copied'); } catch (x) { toast('Could not copy — select the text and copy it', true); } }
+  else if (t.dataset.egmail) {
+    const v = E[t.dataset.egmail].v;
+    window.open('https://mail.google.com/mail/?authuser=' + encodeURIComponent(OWNER) + '&view=cm&fs=1&to=' + encodeURIComponent(v.to) + '&cc=' + encodeURIComponent(v.cc) + '&su=' + encodeURIComponent(v.subject) + '&body=' + encodeURIComponent(v.body), '_blank', 'noopener');
+  }
+  else if (t.dataset.edraft) {
+    const kind = t.dataset.edraft, v = E[kind].v;
+    if (!v.to) return toast('Add at least one email address in To', true);
+    t.disabled = true; t.innerHTML = '<span class="spin"></span>';
+    try {
+      await flush();
+      const r = await call('draft', { id: F.id, kind, to: v.to, cc: v.cc, subject: v.subject, body: v.body });
+      F.emails = r.file.emails; F.checklist = r.file.checklist; renderLog(); renderCheck();
+      toast(S.settings.testMode ? 'Test draft saved to your Gmail Drafts' : 'Draft saved — review it in Gmail Drafts and send');
+    } catch (err) { toast(err.message, true); }
+    t.disabled = false; t.textContent = 'Save as draft';
+  }
+});
+
+function contactType(role) { return /agent/i.test(role) ? 'Agent' : /Buyer|Seller/.test(role) ? 'Client' : role; }
+function autofill(p, by) {
+  const v = String(p[by] || '').trim().toLowerCase(); if (!v) return false;
+  const want = contactType(p.role);
+  const pool = S.contacts.filter(c => String(c[by] || '').toLowerCase() === v);
+  const c = pool.find(x => x.type === want) || pool[0];
+  if (!c) return false;
+  let did = false;
+  ['name', 'email', 'phone', 'company'].forEach(k => { if (!p[k] && c[k]) { p[k] = c[k]; did = true; } });
+  if (did) toast('Filled in from your contacts: ' + c.name);
+  return did;
+}
+function refreshContacts() {
+  $('#dlNames').innerHTML = S.contacts.map(c => '<option value="' + esc(c.name) + '" label="' + esc([c.type, c.company, c.email].filter(Boolean).join(' · ')) + '"></option>').join('');
+  $('#dlEmails').innerHTML = S.contacts.filter(c => c.email).map(c => '<option value="' + esc(c.email) + '" label="' + esc(c.name) + '"></option>').join('');
+}
+
+function changed(path) {
+  dirty = true;
+  $('#saveState').textContent = 'Unsaved…';
+  renderSummary(); renderPending();
+  if (!path || path.indexOf('dates.') === 0) DATE_KEYS.forEach(([k]) => { const c = document.querySelector('[data-chip="' + k + '"]'); if (c) c.innerHTML = F.dates[k] && k !== 'effective' ? when(F.dates[k]) : ''; });
+  ['agents', 'clients', 'vendors'].forEach(k => { if (!E[k] || !E[k].touched) renderEmail(k); });
+  clearTimeout(saveTimer); saveTimer = setTimeout(save, 900);
+}
+async function save() {
+  if (!F || !dirty) return;
+  if (saving) { clearTimeout(saveTimer); saveTimer = setTimeout(save, 600); return; }
+  saving = true; dirty = false; $('#saveState').textContent = 'Saving…';
+  try {
+    const r = await call('save', { file: F });
+    S.contacts = r.contacts; refreshContacts();
+    (r.file.parties || []).forEach((p, i) => { if (F.parties[i]) F.parties[i].contactId = p.contactId; });
+    const i = S.files.findIndex(x => x.id === r.summary.id); if (i > -1) S.files[i] = r.summary;
+    fillSelect();
+    $('#saveState').textContent = dirty ? 'Unsaved…' : 'Saved ✓';
+  } catch (err) { dirty = true; $('#saveState').textContent = 'Not saved'; toast('Not saved: ' + err.message, true); }
+  saving = false;
+}
+async function flush() { clearTimeout(saveTimer); if (dirty) await save(); while (saving) await new Promise(r => setTimeout(r, 150)); }
+window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+/* =================== CONTRACT REVIEW =================== */
+function showWorking(title, sub) {
+  $('#modal').innerHTML = '<div class="modal"><div class="mh"><h2><span class="spin"></span> ' + esc(title) + '</h2></div><div class="mb"><p class="muted" style="margin:0">' + esc(sub) + '</p></div></div>';
+  $('#modal').hidden = false;
+}
+function closeModal() { $('#modal').hidden = true; $('#modal').innerHTML = ''; }
+
+function openReview(x) {
+  x = x || {}; const d = x.dates || {}, b = x.basis || {}, c = x.contingencies || {};
+  const inp = (id, label, val, type) => '<label class="f">' + esc(label) + '<input class="i" id="m_' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '"></label>';
+  const dateIn = (k, l) => '<label class="f">' + esc(l) + '<input class="i" type="date" id="md_' + k + '" value="' + esc(d[k] || '') + '"><span class="basis">' + esc(b[k] || (d[k] ? '' : 'Not found in the contract')) + '</span></label>';
+  $('#modal').innerHTML = '<div class="modal"><div class="mh"><h2>Check the contract details</h2><div class="small muted">Read from ' + esc((F.pending && F.pending.source) || 'the contract') + '. Correct anything that\'s wrong, then confirm. Nothing changes on the file until you do.</div></div>' +
+    '<div class="mb">' +
+      ((x.notes || []).length ? '<div class="warnbox"><b>Double-check these:</b><ul style="margin:6px 0 0;padding-left:18px">' + x.notes.map(n => '<li>' + esc(n) + '</li>').join('') + '</ul></div>' : '') +
+      '<div class="mgrid">' + inp('address', 'Property address', x.address) + inp('town', 'Town', x.town) + inp('state', 'State', x.state) + inp('price', 'Price', x.price) + '</div>' +
+      '<div class="mgrid">' + inp('buyers', 'Buyer(s)', x.buyers) + inp('sellers', 'Seller(s)', x.sellers) + inp('depositAmount', 'Deposit amount', x.depositAmount) + '</div>' +
+      '<div class="mgrid">' + DATE_KEYS.map(([k, l]) => dateIn(k, l)).join('') + '</div>' +
+      '<div><div class="small muted" style="margin-bottom:6px">Contingencies in this contract</div><div class="btns">' +
+        ['inspection', 'dueDiligence', 'appraisal', 'financing'].map(k => '<label class="chip" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="mc_' + k + '"' + (c[k] !== false ? ' checked' : '') + '> ' + ({inspection:'Inspection', dueDiligence:'Due diligence', appraisal:'Appraisal', financing:'Financing'}[k]) + '</label>').join('') + '</div></div>' +
+      '<div class="mgrid">' + inp('listingAgent', 'Listing agent', x.listingAgent) + inp('listingBrokerage', 'Listing brokerage', x.listingBrokerage) + inp('buyerAgent', 'Buyer\'s agent', x.buyerAgent) + inp('buyerBrokerage', 'Buyer\'s brokerage', x.buyerBrokerage) + inp('titleOrAttorney', 'Title / attorney', x.titleOrAttorney) + inp('lender', 'Lender', x.lender) + '</div>' +
+      '<label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" id="m_addParties" checked> Add anyone named here to Parties (filled in from your contacts where I recognise them)</label>' +
+    '</div>' +
+    '<div class="mf"><button class="btn danger" id="m_discard">Discard this reading</button><span style="flex:1"></span><button class="btn" id="m_later">Decide later</button><button class="btn primary" id="m_ok">Confirm &amp; save</button></div></div>';
+  $('#modal').hidden = false;
+  $('#m_later').onclick = closeModal;
+  $('#m_discard').onclick = () => { F.pending = null; closeModal(); renderPending(); changed(); };
+  $('#m_ok').onclick = () => {
+    const g = id => ($('#m_' + id).value || '').trim();
+    ['address', 'town', 'state', 'price'].forEach(k => { if (g(k)) F.property[k] = g(k); });
+    if (g('buyers')) F.buyers = g('buyers');
+    if (g('sellers')) F.sellers = g('sellers');
+    if (g('depositAmount')) F.depositAmount = g('depositAmount');
+    DATE_KEYS.forEach(([k]) => { const v = $('#md_' + k).value; if (v) F.dates[k] = v; });
+    ['inspection', 'dueDiligence', 'appraisal', 'financing'].forEach(k => F.terms[k] = $('#mc_' + k).checked);
+    if ($('#m_addParties').checked) {
+      const addP = (role, name, company) => {
+        name = String(name || '').trim(); if (!name) return;
+        if ((F.parties || []).some(p => p.role === role && p.name.toLowerCase() === name.toLowerCase())) return;
+        const p = { role, name, email: '', phone: '', company: company || '', reminders: true };
+        autofill(p, 'name'); F.parties.push(p);
+      };
+      if (!people('Buyer').length) g('buyers').split(/\s*(?:&|,| and )\s*/).forEach(n => addP('Buyer', n));
+      if (!people('Seller').length) g('sellers').split(/\s*(?:&|,| and )\s*/).forEach(n => addP('Seller', n));
+      addP('Listing agent', g('listingAgent'), g('listingBrokerage'));
+      addP('Buyer agent', g('buyerAgent'), g('buyerBrokerage'));
+      addP('Title / attorney', g('titleOrAttorney'));
+      addP('Lender', g('lender'));
+    }
+    if (['RTA – Returned to Agent', 'FC – File Complete', 'Listing Prep', 'Active Listing'].indexOf(F.status) > -1 && F.dates.effective) F.status = 'Under Agreement';
+    if (!F.service) F.service = 'Under Agreement – Contract to Close';
+    F.reminders = true; F.pending = null;
+    tick('Executed contract received'); tick('Contract dates confirmed');
+    E = {}; closeModal(); renderFile(); changed();
+    toast('Contract details saved — reminders are on for this file');
+  };
+}
+
+start();
+</script>
+</body>
+</html>

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ark Royal Closings · Open a File</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%231F2A44%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-family=%22Georgia,serif%22 font-size=%2232%22 font-weight=%22700%22 text-anchor=%22middle%22 fill=%22%23B8913A%22%3EARC%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F7F5F0;--card:#fff;--ink:#1C2333;--soft:#5E6676;--faint:#9AA0AB;--line:#E6E2D9;--navy:#1F2A44;--gold:#B8913A;--goldsoft:#F6EFDD;--goldline:#E7D7B0;--red:#8B3A3A;--green:#2F6B4F;--serif:'Fraunces',Georgia,serif;--sans:'Inter',-apple-system,'Segoe UI',sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans)}
+header{background:var(--navy);color:#fff;padding:36px 16px 30px}
+.wrap{max-width:760px;margin:0 auto}
+header small{font-size:11px;letter-spacing:.18em;color:var(--gold);font-weight:600}
+header h1{font:600 32px/1.15 var(--serif);margin:8px 0 6px}
+header p{color:#C9D0DC;margin:0;max-width:560px}
+main{padding:22px 16px 60px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
+h2{font:600 19px var(--serif);margin:0 0 4px}
+.hint{color:var(--soft);font-size:13px;margin:0 0 14px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.full{grid-column:1/-1}
+@media(max-width:620px){.grid{grid-template-columns:1fr}}
+label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:var(--soft)}
+label .req{color:var(--red)}
+input,select,textarea{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border-color:var(--gold)}
+.welcome{background:var(--goldsoft);border:1px solid var(--goldline);border-radius:10px;padding:10px 12px;font-size:14px;margin-top:12px}
+.drop{border:2px dashed var(--goldline);border-radius:12px;padding:22px;text-align:center;background:#FFFDF8;cursor:pointer}
+.drop.on{background:var(--goldsoft)}
+.drop b{font-family:var(--serif);font-size:17px}
+.btn{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:14px 22px;font:600 16px var(--sans);cursor:pointer;width:100%}
+.btn:disabled{opacity:.6;cursor:wait}
+.err{color:var(--red);font-size:14px;margin-top:10px}
+.done{text-align:center;padding:40px 20px}
+.done h2{font-size:28px}
+.trap{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.foot{text-align:center;color:var(--faint);font-size:12px;margin-top:20px}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid #fff;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <small>ARK ROYAL CLOSINGS</small>
+  <h1>Open a file with ARC</h1>
+  <p>Send me everything once, right here. If you're under agreement, add the executed P&amp;S and I'll take it from there.</p>
+</div></header>
+
+<main><div class="wrap">
+<form id="f" novalidate>
+  <div class="trap" aria-hidden="true"><label>Website<input name="website" tabindex="-1" autocomplete="off"></label></div>
+
+  <section class="card">
+    <h2>1 · You</h2>
+    <p class="hint">Start with your email — if you've worked with me before, I'll fill in the rest.</p>
+    <div class="grid">
+      <label class="full">Your email <span class="req">*</span><input name="agentEmail" type="email" required autocomplete="email"></label>
+      <label>Your name <span class="req">*</span><input name="agentName" required autocomplete="name"></label>
+      <label>Your mobile <span class="req">*</span><input name="agentPhone" type="tel" required autocomplete="tel"></label>
+      <label class="full">Brokerage <span class="req">*</span><input name="brokerage" required></label>
+    </div>
+    <div class="welcome" id="welcome" hidden></div>
+  </section>
+
+  <section class="card">
+    <h2>2 · What you need</h2>
+    <div class="grid">
+      <label class="full">What do you need from ARC? <span class="req">*</span>
+        <select name="service" required><option value="">Choose…</option>
+          <option>Under Agreement – Contract to Close</option>
+          <option>Listing – Full Listing Setup</option>
+          <option>Listing – Compliance / Paperwork Only</option></select></label>
+      <label>Who do you represent? <span class="req">*</span>
+        <select name="rep" required><option value="">Choose…</option><option>Buyer side</option><option>Seller side</option><option>Both sides</option><option>Transaction Facilitator</option></select></label>
+      <label>Your client is the <span class="req">*</span>
+        <select name="clientSide" required><option value="">Choose…</option><option>Buyer</option><option>Seller</option></select></label>
+      <label>Transaction platform <span class="req">*</span>
+        <select name="platform" required><option value="">Choose…</option><option>Dotloop</option><option>SkySlope</option><option>Lone Wolf / Transact</option><option>Other</option></select></label>
+      <label>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
+        <select name="onLoop" required><option value="">Choose…</option><option>Yes</option><option>Not yet</option></select></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>3 · The property</h2>
+    <div class="grid">
+      <label class="full">Street address <span class="req">*</span><input name="address" required></label>
+      <label>Town <span class="req">*</span><input name="town" required></label>
+      <label>State <span class="req">*</span><select name="state" required><option value="">Choose…</option><option>NH</option><option>ME</option><option>MA</option></select></label>
+      <label>MLS # (if known)<input name="mls"></label>
+      <label>List or sale price<input name="price" inputmode="numeric"></label>
+      <label>Property type<select name="propType"><option></option><option>Single family</option><option>Condo</option><option>Multi-family</option><option>Land</option><option>Other</option></select></label>
+      <label>Condo / HOA?<select name="hoa"><option></option><option>Yes</option><option>No</option></select></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>4 · Your client(s)</h2>
+    <div class="grid">
+      <label>Client 1 — full name <span class="req">*</span><input name="c1Name" required></label>
+      <label>Client 1 — email <span class="req">*</span><input name="c1Email" type="email" required></label>
+      <label class="full">Client 1 — mobile<input name="c1Phone" type="tel"></label>
+      <label>Client 2 — full name<input name="c2Name"></label>
+      <label>Client 2 — email<input name="c2Email" type="email"></label>
+      <label class="full">Client 2 — mobile<input name="c2Phone" type="tel"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>5 · The other side &amp; closing team</h2>
+    <p class="hint">Fill in what you have — leave the rest blank.</p>
+    <div class="grid">
+      <label>Other agent — name<input name="coName"></label>
+      <label>Other agent — brokerage<input name="coBrok"></label>
+      <label>Other agent — email<input name="coEmail" type="email"></label>
+      <label>Other agent — mobile<input name="coPhone" type="tel"></label>
+      <label>Lender — loan officer<input name="lenName"></label>
+      <label>Lender — company<input name="lenCo"></label>
+      <label>Lender — email<input name="lenEmail" type="email"></label>
+      <label>Lender — phone<input name="lenPhone" type="tel"></label>
+      <label>Title / closing attorney — contact<input name="titName"></label>
+      <label>Title / attorney — company<input name="titCo"></label>
+      <label>Title / attorney — email<input name="titEmail" type="email"></label>
+      <label>Title / attorney — phone<input name="titPhone" type="tel"></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>6 · Contract &amp; dates</h2>
+    <p class="hint">Rough dates are fine — I pull the exact deadlines from the executed P&amp;S.</p>
+    <div class="grid">
+      <label>Effective date (if under agreement)<input name="effDate" type="date"></label>
+      <label>Closing date (if known)<input name="closeDate" type="date"></label>
+      <div class="full">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add the executed P&S">
+          <b>Add the executed P&amp;S</b>
+          <div class="hint" id="dropMsg" style="margin:4px 0 0">Drop the PDF here or tap to choose · up to 15 MB</div>
+          <input type="file" id="pns" accept="application/pdf,image/*" hidden>
+        </div>
+      </div>
+      <label class="full">Anything I should know?<textarea name="notes" rows="4"></textarea></label>
+    </div>
+  </section>
+
+  <button class="btn" id="go" type="submit">Send to Ark Royal Closings</button>
+  <div class="err" id="err" hidden></div>
+  <p class="foot">Your details are used only to coordinate this transaction. · Ark Royal Closings · “Zeal does not rest.”</p>
+</form>
+
+<section class="card done" id="done" hidden>
+  <small style="font-size:11px;letter-spacing:.18em;color:var(--gold);font-weight:600">ARK ROYAL CLOSINGS</small>
+  <h2>Thank you — your file is in.</h2>
+  <p class="hint" id="doneMsg"></p>
+  <button class="btn" style="width:auto;margin-top:10px" onclick="location.reload()">Open another file</button>
+</section>
+</div></main>
+
+<script>
+// ⬇⬇ Paste your Google Web app URL between the quotes (same one as in admin.html) ⬇⬇
+const API = 'https://script.google.com/macros/s/AKfycbx81JFQPKRtcY0XmiOCANgkdkQhNghF22x-QMlSxHh4TNp6EapVt9kXC_qurvegr_Q/exec';
+// ⬆⬆ ------------------------------------------------------------------------- ⬆⬆
+
+const form = document.getElementById('f');
+let contract = null;
+
+async function call(action, payload) {
+  const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action }, payload)) });
+  const j = await res.json();
+  if (!j.ok) throw new Error(j.error || 'Something went wrong');
+  return j.data;
+}
+
+// Returning agent → fill in their details
+form.agentEmail.addEventListener('change', async () => {
+  const email = form.agentEmail.value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+  try {
+    const a = await call('agentLookup', { email });
+    if (!a) return;
+    if (!form.agentName.value) form.agentName.value = a.name;
+    if (!form.agentPhone.value) form.agentPhone.value = a.phone;
+    if (!form.brokerage.value) form.brokerage.value = a.company;
+    const w = document.getElementById('welcome');
+    w.textContent = 'Welcome back, ' + String(a.name).split(' ')[0] + ' — I\'ve filled in your details. Please check they\'re still right.';
+    w.hidden = false;
+  } catch (e) { /* quietly carry on */ }
+});
+
+// Representation → which side the client is on
+form.rep.addEventListener('change', () => {
+  if (form.rep.value === 'Buyer side') form.clientSide.value = 'Buyer';
+  else if (form.rep.value === 'Seller side') form.clientSide.value = 'Seller';
+});
+form.service.addEventListener('change', () => {
+  if (/Listing/.test(form.service.value)) { form.clientSide.value = 'Seller'; if (!form.rep.value) form.rep.value = 'Seller side'; }
+});
+
+// P&S drop zone
+const drop = document.getElementById('drop'), pns = document.getElementById('pns'), dropMsg = document.getElementById('dropMsg');
+drop.addEventListener('click', () => pns.click());
+drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pns.click(); } });
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('on'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('on'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('on'); if (e.dataTransfer.files[0]) takeFile(e.dataTransfer.files[0]); });
+pns.addEventListener('change', () => { if (pns.files[0]) takeFile(pns.files[0]); });
+function takeFile(file) {
+  if (file.size > 15 * 1048576) { dropMsg.textContent = 'That file is over 15 MB — please email it to file@arkroyalclosings.com instead.'; return; }
+  const r = new FileReader();
+  r.onload = () => { contract = { name: file.name, mime: file.type || 'application/pdf', b64: String(r.result).split(',')[1] }; dropMsg.textContent = '✓ ' + file.name + ' attached'; };
+  r.readAsDataURL(file);
+}
+
+// Submit
+form.addEventListener('submit', async e => {
+  e.preventDefault();
+  const err = document.getElementById('err'); err.hidden = true;
+  const bad = Array.from(form.querySelectorAll('[required]')).filter(el => !el.value.trim() || (el.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(el.value.trim())));
+  if (bad.length) { err.textContent = 'Please complete the highlighted fields.'; err.hidden = false; bad.forEach(el => el.style.borderColor = '#8B3A3A'); bad[0].focus(); return; }
+  const data = {}; new FormData(form).forEach((v, k) => data[k] = String(v).trim());
+  const btn = document.getElementById('go'); btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>' + (contract ? 'Sending and reading your contract…' : 'Sending…');
+  try {
+    const r = await call('intake', { form: data, contract });
+    form.hidden = true;
+    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (contract ? ' — your contract is already with me.' : '. If you\'re under agreement, please email the executed P&S to file@arkroyalclosings.com.');
+    document.getElementById('done').hidden = false; window.scrollTo(0, 0);
+  } catch (x) {
+    err.textContent = 'Sorry — that didn\'t go through (' + x.message + '). Please try again, or email lynne@arkroyalclosings.com.';
+    err.hidden = false; btn.disabled = false; btn.textContent = 'Send to Ark Royal Closings';
+  }
+});
+form.addEventListener('input', e => { e.target.style.borderColor = ''; });
+</script>
+</body>
+</html>

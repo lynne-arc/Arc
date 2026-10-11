@@ -6,19 +6,19 @@
 <title>Ark Royal Closings · Open a File</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Crect width=%2264%22 height=%2264%22 rx=%2214%22 fill=%22%231F2A44%22/%3E%3Ctext x=%2232%22 y=%2244%22 font-family=%22Georgia,serif%22 font-size=%2232%22 font-weight=%22700%22 text-anchor=%22middle%22 fill=%22%23B8913A%22%3EARC%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#F7F5F0;--card:#fff;--ink:#1C2333;--soft:#5E6676;--faint:#9AA0AB;--line:#E6E2D9;--navy:#1F2A44;--gold:#B8913A;--goldsoft:#F6EFDD;--goldline:#E7D7B0;--red:#8B3A3A;--green:#2F6B4F;--serif:'Fraunces',Georgia,serif;--sans:'Inter',-apple-system,'Segoe UI',sans-serif}
+:root{--bg:#FFFFFF;--card:#fff;--ink:#1C2333;--soft:#5E6676;--faint:#9AA0AB;--line:#E3E5EA;--navy:#2E3466;--gold:#B5964F;--goldsoft:#F5EFE0;--goldline:#E3D3A8;--red:#8B3A3A;--green:#2F6B4F;--serif:'Cormorant Garamond',Georgia,serif;--sans:'Inter',-apple-system,'Segoe UI',sans-serif}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans)}
 header{background:var(--navy);color:#fff;padding:36px 16px 30px}
 .wrap{max-width:760px;margin:0 auto}
 header small{font-size:11px;letter-spacing:.18em;color:var(--gold);font-weight:600}
-header h1{font:600 32px/1.15 var(--serif);margin:8px 0 6px}
+header h1{font:700 36px/1.15 var(--serif);margin:8px 0 6px}
 header p{color:#C9D0DC;margin:0;max-width:560px}
 main{padding:22px 16px 60px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px}
-h2{font:600 19px var(--serif);margin:0 0 4px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(30,40,80,.04)}
+h2{font:700 22px var(--serif);margin:0 0 4px}
 .hint{color:var(--soft);font-size:13px;margin:0 0 14px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .full{grid-column:1/-1}
@@ -32,7 +32,7 @@ label .req{color:var(--red)}
 input,select,textarea{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;width:100%}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border-color:var(--gold)}
 .welcome{background:var(--goldsoft);border:1px solid var(--goldline);border-radius:10px;padding:10px 12px;font-size:14px;margin-top:12px}
-.drop{border:2px dashed var(--goldline);border-radius:12px;padding:22px;text-align:center;background:#FFFDF8;cursor:pointer}
+.drop{border:2px dashed var(--goldline);border-radius:12px;padding:22px;text-align:center;background:#FFFFFF;cursor:pointer}
 .drop.on{background:var(--goldsoft)}
 .drop b{font-family:var(--serif);font-size:17px}
 .btn{background:var(--navy);color:#fff;border:0;border-radius:10px;padding:14px 22px;font:600 16px var(--sans);cursor:pointer;width:100%}
@@ -191,15 +191,15 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <div class="grid">
       <label>Effective date (if under agreement)<input name="effDate" type="date"></label>
       <label>Closing date (if known)<input name="closeDate" type="date"></label>
-      <label class="full" data-show="clientSide:Buyer">Buyer agency agreement fee
-        <div class="fee"><input name="buaAmt" inputmode="decimal" placeholder="e.g. 2"><select name="buaUnit"><option>%</option><option>$</option></select></div>
+      <label class="full" data-show="clientSide:Buyer">Buyer agency agreement fee <span class="req">*</span>
+        <div class="fee"><input name="buaAmt" inputmode="decimal" placeholder="e.g. 3" required><select name="buaUnit"><option>%</option><option>$</option></select></div>
         <span class="hint" style="margin:4px 0 0;font-weight:400">From your buyer agreement — I'll check it against what the seller is paying in the P&amp;S.</span></label>
-      <label data-show="clientSide:Buyer">If the seller pays less than your agreement fee, will you waive the difference?
-        <select name="waive"><option value="">Choose…</option><option>No — buyer pays the difference</option><option>Yes — waiving the difference</option><option>Partly — see note</option><option>Not applicable — seller covers it all</option></select></label>
-      <label data-show="clientSide:Seller">Buyer agent compensation in your listing agreement
-        <div class="fee"><input name="lbaAmt" inputmode="decimal" placeholder="e.g. 2"><select name="lbaUnit"><option>%</option><option>$</option></select></div></label>
-      <label data-show="clientSide:Seller">If the buyer's agent asked for more than that in the P&amp;S, who covers the difference?
-        <select name="cover"><option value="">Choose…</option><option>Not applicable — same or less</option><option>Listing firm is reducing its fee to cover it</option><option>Seller agreed to pay more — listing fee unchanged</option><option>Not sure yet</option></select></label>
+      <label data-show="clientSide:Buyer">If the seller pays less than your agreement fee, will you waive the difference? <span class="req">*</span>
+        <select name="waive" required><option value="">Choose…</option><option>No — buyer pays the difference</option><option>Yes — waiving the difference</option><option>Partly — see note</option><option>Not applicable — seller covers it all</option></select></label>
+      <label data-show="clientSide:Seller">Buyer agent compensation in your listing agreement <span class="req">*</span>
+        <div class="fee"><input name="lbaAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="lbaUnit"><option>%</option><option>$</option></select></div></label>
+      <label data-show="clientSide:Seller">If the buyer's agent asked for more than that in the P&amp;S, who covers the difference? <span class="req">*</span>
+        <select name="cover" required><option value="">Choose…</option><option>Not applicable — same or less</option><option>Listing firm is reducing its fee to cover it</option><option>Seller agreed to pay more — listing fee unchanged</option><option>Not sure yet</option></select></label>
       <label data-show="waive:Partly">Amount you're waiving<div class="fee"><input name="waiveAmt" inputmode="decimal"><select name="waiveUnit"><option>%</option><option>$</option></select></div></label>
     </div>
   </section>

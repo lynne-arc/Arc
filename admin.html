@@ -276,7 +276,7 @@ async function start() {
 function fillSelect() {
   const sel = $('#fileSel');
   sel.innerHTML = '<option value="">⌂ Home — all files</option>' + S.files.slice().reverse().map(f =>
-    '<option value="' + esc(f.id) + '">' + esc(f.id + ' · ' + (f.address || 'New file') + (f.town ? ', ' + f.town : '') + ' · ' + f.status) + (f.pending ? ' · ⚑ review' : '') + '</option>').join('');
+    '<option value="' + esc(f.id) + '">' + esc(f.id + (f.address ? ' - ' + f.address : ' · New file') + (f.town ? ', ' + f.town : '') + ' · ' + f.status) + (f.pending ? ' · ⚑ review' : '') + '</option>').join('');
   sel.value = F ? F.id : '';
 }
 $('#fileSel').addEventListener('change', e => e.target.value ? openFile(e.target.value) : showHome());
@@ -398,7 +398,7 @@ function renderSummary() {
   const rows = DATE_KEYS.filter(([k]) => F.dates[k] && (k === 'effective' || k === 'closing' || F.terms[k] !== false)).map(([k, l]) =>
     '<tr><td>' + esc(l) + '</td><td>' + (k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ' · ' : '') + (k === 'closing' ? 'On or before ' : '') + esc(fmt(F.dates[k], true)) + '</td><td>' + (k === 'effective' ? '' : when(F.dates[k])) + '</td></tr>').join('');
   $('#cSummary').innerHTML =
-    '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
+    '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(fileName()) + '</span></div><div class="cb">' +
     '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
     '<div class="muted small">' + esc(F.status) + (p.price ? ' · ' + esc(money(p.price)) : '') + (F.rep ? ' · ' + esc(F.rep) : '') + '</div>' +
     '<dl class="kv">' +
@@ -517,7 +517,7 @@ function renderParties() {
 }
 
 function renderDocs() {
-  $('#cDocs').innerHTML = '<div class="ch"><h3>Documents</h3><span class="sub">Saved in Drive › Transactions › ' + esc(F.id) + '</span></div><div class="cb">' +
+  $('#cDocs').innerHTML = '<div class="ch"><h3>Documents</h3><span class="sub">Saved in Drive › Transactions › ' + esc(fileName()) + '</span></div><div class="cb">' +
     (DOCS.length ? DOCS.map(d => '<div class="doc"><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.name) + '</a><span class="chip">' + esc(d.group) + '</span></div>').join('') : '<div class="empty">No documents yet.</div>') +
     '<div class="btns" style="margin-top:10px"><select class="i" id="docGroup" style="width:auto">' + opt(DOC_GROUPS, 'ARC internal') + '</select>' +
     '<label class="btn">Upload<input type="file" id="docIn" hidden></label><span class="small faint" id="docMsg"></span></div></div>';
@@ -561,6 +561,7 @@ function datesBlock() {
   return rows.length ? rows.join('\n') : '(dates to follow)';
 }
 function where() { const p = F.property || {}; return [p.address, p.town, p.state].filter(Boolean).join(', ') || 'the property'; }
+function fileName() { const a = ((F.property || {}).address || '').trim(); return a ? F.id + ' - ' + a : F.id; }
 function tag() { return '[' + F.id + '] ' + ((F.property || {}).address || ''); }
 
 function buildEmail(kind) {

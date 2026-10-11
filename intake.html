@@ -22,8 +22,12 @@ h2{font:600 19px var(--serif);margin:0 0 4px}
 .hint{color:var(--soft);font-size:13px;margin:0 0 14px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .full{grid-column:1/-1}
+.fee{display:flex;gap:6px}.fee input{flex:1;min-width:0}.fee select{width:72px;flex:none}
+[hidden]{display:none!important}
 @media(max-width:620px){.grid{grid-template-columns:1fr}}
-label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:500;color:var(--soft)}
+label{display:block;font-size:13px;font-weight:500;color:var(--soft)}
+label>input,label>select,label>textarea,label>.fee,label>.hint{display:block;margin-top:5px}
+label>.fee{display:flex}
 label .req{color:var(--red)}
 input,select,textarea{font:inherit;color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:#fff;width:100%}
 input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border-color:var(--gold)}
@@ -46,7 +50,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
 <header><div class="wrap">
   <small>ARK ROYAL CLOSINGS</small>
   <h1>Open a file with ARC</h1>
-  <p>Send me everything once, right here. If you're under agreement, add the executed P&amp;S and I'll take it from there.</p>
+  <p>Send me everything once, right here. Add the signed listing agreement or the executed P&amp;S and I'll take it from there.</p>
 </div></header>
 
 <main><div class="wrap">
@@ -92,7 +96,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
       <label>State <span class="req">*</span><select name="state" required><option value="">Choose…</option><option>NH</option><option>ME</option><option>MA</option></select></label>
       <label>MLS # (if known)<input name="mls"></label>
       <label>List or sale price<input name="price" inputmode="numeric"></label>
-      <label>Property type<select name="propType"><option></option><option>Single family</option><option>Condo</option><option>Multi-family</option><option>Land</option><option>Other</option></select></label>
+      <label>Property type<select name="propType"><option></option><option>Single family</option><option>Condo</option><option>Multi-family</option><option>Mobile home</option><option>Land</option><option>Other</option></select></label>
       <label>Condo / HOA?<select name="hoa"><option></option><option>Yes</option><option>No</option></select></label>
     </div>
   </section>
@@ -109,7 +113,46 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" data-for="listing" hidden>
+    <h2>5 · Listing agreement &amp; MLS</h2>
+    <p class="hint">Straight from the signed listing agreement. Rough dates are fine for anything not booked yet.</p>
+    <div class="grid">
+      <label>Listing agreement starts<input name="lsStart" type="date"></label>
+      <label>Listing agreement expires<input name="lsEnd" type="date"></label>
+      <label>Target date live in MLS <span class="req">*</span><input name="goLive" type="date" required></label>
+      <label>Photo appointment (if booked)<input name="photoDate" type="date"></label>
+      <label>Coming soon in MLS (up to 10 days before showings)? <span class="req">*</span><select name="comingSoon" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label>Withhold from MLS while the home is prepared? <span class="req">*</span><select name="withhold" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label class="full" data-show="withhold:Yes" hidden>Withhold until (on or before) <span class="req">*</span><input name="withholdUntil" type="date" required>
+        <span class="hint" style="margin:4px 0 0;font-weight:400">If it goes under agreement before going live, it's only entered in MLS after closing, for comparables.</span></label>
+    </div>
+  </section>
+
+  <section class="card" data-for="listing" hidden>
+    <h2>6 · Commission</h2>
+    <p class="hint">As written in Section 4 of the listing agreement. Enter 0 if nothing is offered.</p>
+    <div class="grid">
+      <label>Listing firm compensation <span class="req">*</span><div class="fee"><input name="lfAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="lfUnit"><option>%</option><option>$</option></select></div></label>
+      <label>Based on <span class="req">*</span><select name="lfBasis" required><option value="">Choose…</option><option>Gross contract price</option><option>Net contract price</option></select></label>
+      <label>If the buyer is unrepresented, listing firm gets an additional<div class="fee"><input name="ubAmt" inputmode="decimal" placeholder="e.g. 2"><select name="ubUnit"><option>%</option><option>$</option></select></div></label>
+      <label>Buyer agent compensation <span class="req">*</span><div class="fee"><input name="baAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="baUnit"><option>%</option><option>$</option></select></div></label>
+      <label>Buyer facilitator compensation<div class="fee"><input name="bfAmt" inputmode="decimal" placeholder="e.g. 2"><select name="bfUnit"><option>%</option><option>$</option></select></div></label>
+    </div>
+  </section>
+
+  <section class="card" data-for="listing" hidden>
+    <h2>7 · Seller permissions</h2>
+    <div class="grid">
+      <label>Seller consents to dual agency? <span class="req">*</span><select name="dualAgency" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label>Can the property have a sign? <span class="req">*</span><select name="sign" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label>Audio / video recording devices in the home? <span class="req">*</span><select name="devices" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label data-show="devices:Yes" hidden>They record <span class="req">*</span><select name="devicesRecord" required><option value="">Choose…</option><option>Audio</option><option>Video</option><option>Both</option></select></label>
+      <label class="full">Anything not standard in Section 7 (Authority of Firm)?<textarea name="authority" rows="2" placeholder="Only what's unusual, e.g. firm must be present for all showings, no interior photos"></textarea></label>
+      <label class="full">Additional instructions<textarea name="instructions" rows="3" placeholder="e.g. showing instructions, pets, tenant notice, access"></textarea></label>
+    </div>
+  </section>
+
+  <section class="card" data-for="ua">
     <h2>5 · The other side &amp; closing team</h2>
     <p class="hint">Fill in what you have — leave the rest blank.</p>
     <div class="grid">
@@ -128,19 +171,51 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     </div>
   </section>
 
-  <section class="card">
-    <h2>6 · Contract &amp; dates</h2>
+  <section class="card" data-for="ua">
+    <h2>6 · Utilities &amp; prorations</h2>
+    <p class="hint">These aren't in the P&amp;S but I need them before closing. "Not sure" is fine — I'll chase it.</p>
+    <div class="grid">
+      <label>Heating fuel to prorate? <span class="req">*</span><select name="fuel" required><option value="">Choose…</option><option>None</option><option>Oil</option><option>Propane</option><option>Oil &amp; propane</option><option>Not sure</option></select></label>
+      <label data-show="fuel:Oil|Propane">Fuel company<input name="fuelCo"></label>
+      <label data-show="fuel:Oil|Propane">Fuel company phone<input name="fuelPhone" type="tel"></label>
+      <label>Municipal water / sewer proration? <span class="req">*</span><select name="waterSewer" required><option value="">Choose…</option><option>Water &amp; sewer</option><option>Water only</option><option>Sewer only</option><option>No — private well &amp; septic</option><option>Not sure</option></select></label>
+      <label data-show="waterSewer:Water|Sewer">Water / sewer department or company<input name="wsCo"></label>
+      <label>Natural gas meter reading needed? <span class="req">*</span><select name="gas" required><option value="">Choose…</option><option>Yes</option><option>No</option><option>Not sure</option></select></label>
+      <label data-show="gas:Yes">Gas company<input name="gasCo"></label>
+    </div>
+  </section>
+
+  <section class="card" data-for="ua">
+    <h2>7 · Contract &amp; dates</h2>
     <p class="hint">Rough dates are fine — I pull the exact deadlines from the executed P&amp;S.</p>
     <div class="grid">
       <label>Effective date (if under agreement)<input name="effDate" type="date"></label>
       <label>Closing date (if known)<input name="closeDate" type="date"></label>
-      <div class="full">
-        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add the executed P&S">
-          <b>Add the executed P&amp;S</b>
-          <div class="hint" id="dropMsg" style="margin:4px 0 0">Drop the PDF here or tap to choose · up to 15 MB</div>
-          <input type="file" id="pns" accept="application/pdf,image/*" hidden>
-        </div>
-      </div>
+      <label class="full" data-show="clientSide:Buyer">Buyer agency agreement fee
+        <div class="fee"><input name="buaAmt" inputmode="decimal" placeholder="e.g. 2"><select name="buaUnit"><option>%</option><option>$</option></select></div>
+        <span class="hint" style="margin:4px 0 0;font-weight:400">From your buyer agreement — I'll check it against what the seller is paying in the P&amp;S.</span></label>
+      <label data-show="clientSide:Buyer">If the seller pays less than your agreement fee, will you waive the difference?
+        <select name="waive"><option value="">Choose…</option><option>No — buyer pays the difference</option><option>Yes — waiving the difference</option><option>Partly — see note</option><option>Not applicable — seller covers it all</option></select></label>
+      <label data-show="clientSide:Seller">Buyer agent compensation in your listing agreement
+        <div class="fee"><input name="lbaAmt" inputmode="decimal" placeholder="e.g. 2"><select name="lbaUnit"><option>%</option><option>$</option></select></div></label>
+      <label data-show="clientSide:Seller">If the buyer's agent asked for more than that in the P&amp;S, who covers the difference?
+        <select name="cover"><option value="">Choose…</option><option>Not applicable — same or less</option><option>Listing firm is reducing its fee to cover it</option><option>Seller agreed to pay more — listing fee unchanged</option><option>Not sure yet</option></select></label>
+      <label data-show="waive:Partly">Amount you're waiving<div class="fee"><input name="waiveAmt" inputmode="decimal"><select name="waiveUnit"><option>%</option><option>$</option></select></div></label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>8 · Documents</h2>
+    <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add a document">
+      <b id="dropTitle">Add the executed P&amp;S</b>
+      <div class="hint" id="dropMsg" style="margin:4px 0 0">Drop the PDF here or tap to choose · up to 15 MB</div>
+      <input type="file" id="pns" accept="application/pdf,image/*" hidden>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>9 · Anything else</h2>
+    <div class="grid">
       <label class="full">Anything I should know?<textarea name="notes" rows="4"></textarea></label>
     </div>
   </section>
@@ -158,10 +233,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
 </section>
 </div></main>
 
+<script src="config.js"></script>
 <script>
-// ⬇⬇ Paste your Google Web app URL between the quotes (same one as in admin.html) ⬇⬇
-const API = 'https://script.google.com/macros/s/AKfycbx81JFQPKRtcY0XmiOCANgkdkQhNghF22x-QMlSxHh4TNp6EapVt9kXC_qurvegr_Q/exec';
-// ⬆⬆ ------------------------------------------------------------------------- ⬆⬆
+const API = window.ARC_API_URL;   // set once in config.js
 
 const form = document.getElementById('f');
 let contract = null;
@@ -193,10 +267,27 @@ form.agentEmail.addEventListener('change', async () => {
 form.rep.addEventListener('change', () => {
   if (form.rep.value === 'Buyer side') form.clientSide.value = 'Buyer';
   else if (form.rep.value === 'Seller side') form.clientSide.value = 'Seller';
+  showSections();
 });
 form.service.addEventListener('change', () => {
   if (/Listing/.test(form.service.value)) { form.clientSide.value = 'Seller'; if (!form.rep.value) form.rep.value = 'Seller side'; }
 });
+
+// Listing files see listing sections; under-agreement files see contract sections.
+// Fields marked data-show="name:Value|Other" appear only when that answer is chosen.
+function showSections() {
+  const listing = /Listing/.test(form.service.value);
+  document.querySelectorAll('section[data-for]').forEach(s => { s.hidden = s.dataset.for !== (listing ? 'listing' : 'ua'); });
+  document.querySelectorAll('[data-show]').forEach(el => {
+    const [name, want] = el.dataset.show.split(':');
+    el.hidden = !(form[name].value && new RegExp(want).test(form[name].value));
+  });
+  let n = 0;
+  form.querySelectorAll('section.card').forEach(s => { if (!s.hidden) { n++; const h = s.querySelector('h2'); h.textContent = h.textContent.replace(/^\d+/, n); } });
+  document.getElementById('dropTitle').textContent = listing ? 'Add the signed listing agreement' : 'Add the executed P&S';
+}
+form.addEventListener('change', showSections);
+showSections();
 
 // P&S drop zone
 const drop = document.getElementById('drop'), pns = document.getElementById('pns'), dropMsg = document.getElementById('dropMsg');
@@ -217,15 +308,18 @@ function takeFile(file) {
 form.addEventListener('submit', async e => {
   e.preventDefault();
   const err = document.getElementById('err'); err.hidden = true;
-  const bad = Array.from(form.querySelectorAll('[required]')).filter(el => !el.value.trim() || (el.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(el.value.trim())));
+  const bad = Array.from(form.querySelectorAll('[required]')).filter(el => !el.closest('[hidden]')).filter(el => !el.value.trim() || (el.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(el.value.trim())));
   if (bad.length) { err.textContent = 'Please complete the highlighted fields.'; err.hidden = false; bad.forEach(el => el.style.borderColor = '#8B3A3A'); bad[0].focus(); return; }
   const data = {}; new FormData(form).forEach((v, k) => data[k] = String(v).trim());
+  // only send the fields for the sections the agent could see
+  form.querySelectorAll('[hidden] [name]').forEach(el => { delete data[el.name]; });
+  form.querySelectorAll('[name][hidden]').forEach(el => { delete data[el.name]; });
   const btn = document.getElementById('go'); btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span>' + (contract ? 'Sending and reading your contract…' : 'Sending…');
+  btn.innerHTML = '<span class="spin"></span>' + (contract ? 'Sending your document…' : 'Sending…');
   try {
     const r = await call('intake', { form: data, contract });
     form.hidden = true;
-    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (contract ? ' — your contract is already with me.' : '. If you\'re under agreement, please email the executed P&S to file@arkroyalclosings.com.');
+    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (contract ? ' — your document is already with me.' : (/Listing/.test(data.service) ? '. Please email the signed listing agreement to file@arkroyalclosings.com.' : '. Please email the executed P&S to file@arkroyalclosings.com when you have it.'));
     document.getElementById('done').hidden = false; window.scrollTo(0, 0);
   } catch (x) {
     err.textContent = 'Sorry — that didn\'t go through (' + x.message + '). Please try again, or email lynne@arkroyalclosings.com.';

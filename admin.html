@@ -187,11 +187,10 @@ textarea.i{resize:vertical;line-height:1.55}
 <datalist id="dlNames"></datalist>
 <datalist id="dlEmails"></datalist>
 
+<script src="config.js"></script>
 <script>
 /* =================== SETTINGS =================== */
-// ⬇⬇ Paste your Google Web app URL between the quotes (Deploy → Manage deployments → Web app URL) ⬇⬇
-const API = 'https://script.google.com/macros/s/AKfycbx81JFQPKRtcY0XmiOCANgkdkQhNghF22x-QMlSxHh4TNp6EapVt9kXC_qurvegr_Q/exec';
-// ⬆⬆ ----------------------------------------------------------------------------------------- ⬆⬆
+const API = window.ARC_API_URL;   // set once in config.js
 
 const OWNER = 'lynne@arkroyalclosings.com';
 const SIGNATURE = '\n\nCheers!\nLynne Pinette\nArk Royal Closings\n603-343-3688 · lynne@arkroyalclosings.com\narkroyalclosings.com';
@@ -363,6 +362,7 @@ function renderFile() {
     '<div class="grid">' +
       '<div class="col">' +
         '<section class="card" id="cSummary"></section>' +
+        '<section class="card" id="cAgent"></section>' +
         '<section class="card" id="cFile"></section>' +
         '<section class="card" id="cTerms"></section>' +
         '<section class="card" id="cCal"></section>' +
@@ -378,7 +378,7 @@ function renderFile() {
         '<section class="card" id="cNotes"></section>' +
       '</div>' +
     '</div>';
-  renderPending(); renderSummary(); renderFileInfo(); renderTerms(); renderCal(); renderParties(); renderDocs();
+  renderPending(); renderSummary(); renderAgent(); renderFileInfo(); renderTerms(); renderCal(); renderParties(); renderDocs();
   ['agents', 'clients', 'vendors'].forEach(renderEmail); renderLog(); renderCheck(); renderNotes();
 }
 
@@ -425,6 +425,52 @@ function opt(list, v) { return list.map(o => '<option' + (o === v ? ' selected' 
 function fld(label, path, type, extra) {
   const v = getPath(F, path); return '<label class="f">' + esc(label) + '<input class="i" data-path="' + path + '" type="' + (type || 'text') + '" value="' + esc(v == null ? '' : v) + '"' + (extra || '') + '></label>';
 }
+/* What the agent told us on the File Input page, plus terms read from the P&S */
+function feeGaps() {
+  const s = F.contractTerms && F.contractTerms.buyerFee, out = [];
+  if (!s) return out;
+  const cmp = (a, labelA) => {
+    if (!a || a.unit !== s.unit) return null;
+    const gap = Math.round((parseFloat(a.amount) - parseFloat(s.amount)) * 100) / 100;
+    const show = v => a.unit === '$' ? money(v) : v + '%';
+    return { gap, show, text: labelA + ' ' + show(a.amount) + ', P&S has the seller paying ' + show(s.amount) };
+  };
+  const b = cmp(F.buyerAgreementFee, 'Buyer agreement is');
+  if (b && b.gap > 0) {
+    const w = F.buyerAgreementFee.waive || '';
+    out.push('<b>Buyer fee gap of ' + b.show(b.gap) + '.</b> ' + esc(b.text) + '. ' +
+      (/^Yes/.test(w) ? 'The agent is <b>waiving</b> the difference — make sure it isn\'t charged on the closing statement.' :
+       /^Partly/.test(w) ? 'The agent is waiving <b>part</b> of it — check the amount against the closing statement.' :
+       /^No/.test(w) ? 'The <b>buyer owes the difference</b> — make sure it\'s on the closing statement.' :
+       'The agent hasn\'t said whether they\'re waiving it — <b>ask before closing</b>.'));
+  }
+  const l = cmp(F.listingBuyerFee, 'Listing agreement offers the buyer agent');
+  if (l && l.gap < 0) {
+    const c = F.listingBuyerFee.cover || '', extra = l.show(-l.gap);
+    out.push('<b>Buyer agent asked for ' + extra + ' more than the listing agreement.</b> ' + esc(l.text) + '. ' +
+      (/reducing/.test(c) ? 'The <b>listing firm is reducing its fee</b> by ' + extra + ' — check the commission split on the closing statement.' :
+       /Seller agreed/.test(c) ? 'The <b>seller is paying ' + extra + ' more</b> and the listing fee is unchanged — confirm the seller has signed off on the increase.' :
+       'The agent hasn\'t said who covers it — <b>ask whether the listing fee is reduced or the seller is paying more</b>.'));
+  }
+  return out;
+}
+function renderAgent() {
+  const rows = (F.intake || []).slice(), ct = F.contractTerms || {};
+  if (ct.buyerFeeText) rows.push({ group: 'Commission', label: 'Seller pays buyer brokerage (P&S)', value: ct.buyerFeeText });
+  if (ct.concessions) rows.push({ group: 'Commission', label: 'Concessions (P&S)', value: ct.concessions });
+  const gaps = feeGaps();
+  const el = $('#cAgent');
+  if (!rows.length && !gaps.length) { el.hidden = true; return; }
+  el.hidden = false;
+  const groups = [];
+  rows.forEach(r => { let g = groups.find(x => x.name === r.group); if (!g) groups.push(g = { name: r.group, rows: [] }); g.rows.push(r); });
+  el.innerHTML = '<div class="ch"><h3>File details</h3><span class="sub">From the agent' + (F.contractTerms ? ' &amp; the P&amp;S' : '') + '</span></div><div class="cb">' +
+    gaps.map(g => '<div class="warnbox" style="margin-bottom:10px">' + g + '</div>').join('') +
+    groups.map(g => '<div class="small muted" style="margin:10px 0 4px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">' + esc(g.name) + '</div>' +
+      '<table class="kv">' + g.rows.map(r => '<tr><td>' + esc(r.label) + '</td><td' + (/^⚑/.test(r.label) ? ' style="color:var(--red)"' : '') + '>' + esc(r.value) + '</td></tr>').join('') + '</table>').join('') +
+    '</div>';
+}
+
 function renderFileInfo() {
   $('#cFile').innerHTML = '<div class="ch"><h3>File</h3><span class="sub">Created ' + esc(fmt(F.created, true)) + '</span></div><div class="cb stack">' +
     '<label class="f">Status<select class="i" data-path="status">' + opt(S.settings.statuses || [], F.status) + '</select></label>' +
@@ -703,12 +749,20 @@ function openReview(x) {
   x = x || {}; const d = x.dates || {}, b = x.basis || {}, c = x.contingencies || {};
   const inp = (id, label, val, type) => '<label class="f">' + esc(label) + '<input class="i" id="m_' + id + '" type="' + (type || 'text') + '" value="' + esc(val == null ? '' : val) + '"></label>';
   const dateIn = (k, l) => '<label class="f">' + esc(l) + '<input class="i" type="date" id="md_' + k + '" value="' + esc(d[k] || '') + '"><span class="basis">' + esc(b[k] || (d[k] ? '' : 'Not found in the contract')) + '</span></label>';
+  const notes = (x.notes || []).slice();
+  { const keep = F.contractTerms; F.contractTerms = { buyerFee: x.buyerFee };
+    feeGaps().forEach(g => notes.unshift(g.replace(/<[^>]+>/g, '')));
+    F.contractTerms = keep; }
+  x = Object.assign({}, x, { notes });
   $('#modal').innerHTML = '<div class="modal"><div class="mh"><h2>Check the contract details</h2><div class="small muted">Read from ' + esc((F.pending && F.pending.source) || 'the contract') + '. Correct anything that\'s wrong, then confirm. Nothing changes on the file until you do.</div></div>' +
     '<div class="mb">' +
       ((x.notes || []).length ? '<div class="warnbox"><b>Double-check these:</b><ul style="margin:6px 0 0;padding-left:18px">' + x.notes.map(n => '<li>' + esc(n) + '</li>').join('') + '</ul></div>' : '') +
       '<div class="mgrid">' + inp('address', 'Property address', x.address) + inp('town', 'Town', x.town) + inp('state', 'State', x.state) + inp('price', 'Price', x.price) + '</div>' +
       '<div class="mgrid">' + inp('buyers', 'Buyer(s)', x.buyers) + inp('sellers', 'Seller(s)', x.sellers) + inp('depositAmount', 'Deposit amount', x.depositAmount) + '</div>' +
       '<div class="mgrid">' + DATE_KEYS.map(([k, l]) => dateIn(k, l)).join('') + '</div>' +
+      ((x.otherDeadlines || []).length ? '<div><div class="small muted" style="margin-bottom:6px">Other deadlines in this contract — ticked ones go on the Calendar and into reminders</div>' +
+        x.otherDeadlines.map((o, i) => '<div class="calrow" style="grid-template-columns:auto 1fr 150px"><input type="checkbox" id="mo_on' + i + '" checked><span><input class="i" id="mo_l' + i + '" value="' + esc(o.label || '') + '"><span class="basis">' + esc(o.basis || '') + '</span></span><input class="i" type="date" id="mo_d' + i + '" value="' + esc(o.date || '') + '"></div>').join('') + '</div>' : '') +
+      '<div class="mgrid">' + inp('buyerFeeText', 'Seller pays buyer brokerage', x.buyerFeeText) + inp('concessions', 'Concessions', x.concessions) + '</div>' +
       '<div><div class="small muted" style="margin-bottom:6px">Contingencies in this contract</div><div class="btns">' +
         ['inspection', 'dueDiligence', 'appraisal', 'financing'].map(k => '<label class="chip" style="display:flex;gap:6px;align-items:center;cursor:pointer"><input type="checkbox" id="mc_' + k + '"' + (c[k] !== false ? ' checked' : '') + '> ' + ({inspection:'Inspection', dueDiligence:'Due diligence', appraisal:'Appraisal', financing:'Financing'}[k]) + '</label>').join('') + '</div></div>' +
       '<div class="mgrid">' + inp('listingAgent', 'Listing agent', x.listingAgent) + inp('listingBrokerage', 'Listing brokerage', x.listingBrokerage) + inp('buyerAgent', 'Buyer\'s agent', x.buyerAgent) + inp('buyerBrokerage', 'Buyer\'s brokerage', x.buyerBrokerage) + inp('titleOrAttorney', 'Title / attorney', x.titleOrAttorney) + inp('lender', 'Lender', x.lender) + '</div>' +
@@ -726,6 +780,15 @@ function openReview(x) {
     if (g('depositAmount')) F.depositAmount = g('depositAmount');
     DATE_KEYS.forEach(([k]) => { const v = $('#md_' + k).value; if (v) F.dates[k] = v; });
     ['inspection', 'dueDiligence', 'appraisal', 'financing'].forEach(k => F.terms[k] = $('#mc_' + k).checked);
+    F.contractTerms = { buyerFee: x.buyerFee || null, buyerFeeText: g('buyerFeeText'), concessions: g('concessions'), escrowAgent: x.escrowAgent || '' };
+    F.custom = F.custom || [];
+    (x.otherDeadlines || []).forEach((o, i) => {
+      if (!$('#mo_on' + i).checked) return;
+      const label = ($('#mo_l' + i).value || '').trim(), date = $('#mo_d' + i).value;
+      if (!label || !date) return;
+      const same = F.custom.find(c => c.label.toLowerCase() === label.toLowerCase());
+      if (same) same.date = date; else F.custom.push({ label, date });
+    });
     if ($('#m_addParties').checked) {
       const addP = (role, name, company) => {
         name = String(name || '').trim(); if (!name) return;

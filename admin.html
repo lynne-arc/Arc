@@ -389,13 +389,13 @@ function renderTeams() {
       '</div><button class="btn small" data-editteam="' + esc(t.id) + '">Edit</button></div>').join('') : '<div class="empty">No teams yet.</div>') +
     '<div class="btns" style="margin-top:8px"><button class="btn" data-editteam="new">+ New team</button></div></div>';
   if (!TEAM_EDIT) { el.innerHTML = view; return; }
-  const t = TEAM_EDIT, row = (m, i) => '<div class="row3" style="grid-template-columns:1.3fr 1.6fr 1fr .8fr .8fr .8fr auto;gap:6px;margin-bottom:6px">' +
+  const t = TEAM_EDIT, row = (m, i) => '<div class="row3" style="grid-template-columns:1.3fr 1.6fr 1fr .8fr .8fr .8fr auto auto;gap:6px;margin-bottom:6px">' +
     [['name', 'Name'], ['email', 'Email'], ['phone', 'Mobile']].map(([k, ph]) => '<input class="i" data-tm="' + i + '" data-tk="' + k + '" value="' + esc(m[k] || '') + '" placeholder="' + ph + '">').join('') +
     ['NH', 'ME', 'MA'].map(k => '<input class="i" data-tm="' + i + '" data-tl="' + k + '" value="' + esc((m.licenses || {})[k] || '') + '" placeholder="' + k + ' lic #">').join('') +
-    '<button class="btn ghost danger" data-tmdel="' + i + '">✕</button></div>';
+    '<button class="btn small" data-tmroster="' + i + '" title="Fill mobile, email and license numbers from the Verani rosters">Roster</button><button class="btn ghost danger" data-tmdel="' + i + '">✕</button></div>';
   el.innerHTML = '<div class="ch"><h3>' + (t.id ? 'Edit team' : 'New team') + '</h3></div><div class="cb">' +
     '<div class="row2" style="margin-bottom:10px"><label class="f">Team name<input class="i" id="tName" value="' + esc(t.name || '') + '"></label><label class="f">Brokerage<input class="i" id="tBrok" value="' + esc(t.brokerage || '') + '"></label></div>' +
-    '<div class="small muted" style="margin-bottom:4px">Members (each signs in with their own email). License numbers: fill in the states they\'re licensed in.</div>' +
+    '<div class="small muted" style="margin-bottom:4px">Members (each signs in with their own email). Type a name and press <b>Roster</b> to fill their mobile, email and license numbers from the Verani rosters.</div>' +
     (t.members || []).map(row).join('') +
     '<div class="btns"><button class="btn" id="tAdd">+ Add member</button><span style="flex:1"></span>' + (t.id ? '<button class="btn ghost danger" id="tDel">Delete team</button>' : '') +
     '<button class="btn ghost" id="tCancel">Cancel</button><button class="btn primary" id="tSave">Save team</button></div></div>';
@@ -411,6 +411,15 @@ document.addEventListener('click', async e => {
   if (b.dataset.editteam) { const t = (S.teams || []).find(x => x.id === b.dataset.editteam); TEAM_EDIT = t ? JSON.parse(JSON.stringify(t)) : { name: '', brokerage: '', members: [{ licenses: {} }] }; return renderTeams(); }
   if (b.id === 'tAdd') { TEAM_EDIT.members.push({ licenses: {} }); return renderTeams(); }
   if (b.dataset.tmdel !== undefined) { TEAM_EDIT.members.splice(+b.dataset.tmdel, 1); return renderTeams(); }
+  if (b.dataset.tmroster !== undefined) {
+    const m = TEAM_EDIT.members[+b.dataset.tmroster]; if (!m.name && !m.email) return toast('Type their name first', true);
+    b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+    try { const r = await call('rosterLookup', { name: m.name, email: m.email });
+      if (!r) { toast('Not found on the rosters: check the spelling of their name', true); }
+      else { m.name = m.name || r.name; if (!m.email) m.email = r.email; if (!m.phone) m.phone = r.phone; m.licenses = Object.assign({}, r.licenses, Object.fromEntries(Object.entries(m.licenses || {}).filter(([, v]) => v))); toast('Filled from the roster'); } }
+    catch (err) { toast(err.message, true); }
+    return renderTeams();
+  }
   if (b.id === 'tCancel') { TEAM_EDIT = null; return renderTeams(); }
   if (b.id === 'tDel') { if (!confirm('Delete this team? Its files stay, they just aren\'t shared with the team any more.')) return; const r = await call('deleteTeam', { id: TEAM_EDIT.id }); S.teams = r.teams; TEAM_EDIT = null; return showHome(); }
   if (b.id === 'tSave') { b.disabled = true; try { const r = await call('saveTeam', { team: TEAM_EDIT }); S.teams = r.teams; S.contacts = r.contacts; refreshContacts(); TEAM_EDIT = null; toast('Team saved'); showHome(); } catch (err) { b.disabled = false; toast(err.message, true); } }

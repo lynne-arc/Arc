@@ -677,7 +677,8 @@ function contractSummary() {
     '.b .d{font-size:9px;letter-spacing:.22em;font-weight:700;margin-top:2px}h1{font-size:24px;margin:0;color:#2E3466}h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#5E6676;margin:14px 0 4px}' +
     'table{width:100%;border-collapse:collapse;font-size:14.5px}td{padding:3px 0;border-bottom:1px solid #E3E5EA;vertical-align:top}td:first-child{color:#5E6676;width:38%}td:last-child{text-align:right}' +
     'tr:last-child td{font-weight:700;color:#2E3466}.who tr:last-child td{font-weight:400;color:#1C2333}.who tr:last-child td:first-child{color:#5E6676}.who td:last-child{text-align:left}' +
-    '.f{margin-top:16px;font-size:11px;color:#5E6676;text-align:center;border-top:1px solid #B5964F;padding-top:6px}@media print{body{margin:0 auto;padding:0}}</style></head><body>' +
+    '.f{margin-top:16px;font-size:11px;color:#5E6676;text-align:center;border-top:1px solid #B5964F;padding-top:6px}html,body{height:100%}body{display:flex;flex-direction:column;box-sizing:border-box}.f{margin-top:auto}' +
+    '@media print{html,body{height:auto}body{display:block;margin:0 auto;padding:0 0 60px}.f{position:fixed;left:0;right:0;bottom:0;margin:0;background:#fff}}</style></head><body>' +
     '<div class="b"><div class="n">ARK ROYAL</div><div class="c">Closings</div><div class="d">REAL ESTATE<br>TRANSACTION COORDINATION</div></div>' +
     '<h1>' + esc(where()) + '</h1><div style="color:#5E6676">Executed Contract Summary · ' + esc(F.id) + '</div>' +
     '<h2>Who is who</h2><table class="who">' + who.map(tr).join('') + '</table>' +

@@ -460,7 +460,7 @@ function renderSummary() {
   const items = (ua ? DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, label: l, date: F.dates[k] })) : [])
     .concat((F.custom || []).filter(c => c.date && c.label && (ua ? !isListingDate(c.label) : true)).map(c => ({ label: c.label, date: c.date })))
     .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
-    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+    .sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));   // closing always last
   const rows = items.map(x => '<tr><td>' + esc(x.label) + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
   $('#cSummary').innerHTML =
     '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
@@ -626,13 +626,13 @@ function renderCal() {
   const depRow = () => '<div class="row3" style="grid-template-columns:' + (/dropped off/.test(F.depositMethod.method || '') ? '3fr 2fr' : '1fr') + ';margin:0 0 8px">' +
       '<label class="f">Paid by<select class="i" data-path="depositMethod.method"><option></option>' + opt(DEP_METHODS, F.depositMethod.method) + '</select></label>' +
       (/dropped off/.test(F.depositMethod.method || '') ? '<label class="f">Drop-off office<input class="i" data-path="depositMethod.office" value="' + esc(F.depositMethod.office || '') + '"></label>' : '') + '</div>';
-  const keyRow = ([k, l]) => { const st = metState(k, F.dates[k]); return { date: F.dates[k] || '', st, html: '<div class="calrow" title="' + esc(basis[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (st === 'overdue' ? '<span style="color:var(--red);font-weight:600">Not ticked: ' + esc(MET_BY[k]) + '</span>' : F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>' + (k === 'deposit' ? depRow() : '') }; };
+  const keyRow = ([k, l]) => { const st = metState(k, F.dates[k]); return { k, date: F.dates[k] || '', st, html: '<div class="calrow" title="' + esc(basis[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (st === 'overdue' ? '<span style="color:var(--red);font-weight:600">Not ticked: ' + esc(MET_BY[k]) + '</span>' : F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>' + (k === 'deposit' ? depRow() : '') }; };
   const custRow = (c, i) => ({ date: c.date || '', st: c.label ? metState('', c.date) : 'upcoming', html: '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>' });
   const autoRow = a => ({ date: a.date, st: metState('', a.date), html: '<div class="calrow" title="Moves with the closing date. On this day a request email to title / attorney is drafted for you."><span>' + esc(a.label) + '<div class="small faint">' + esc(a.note) + ' · email to title / attorney</div></span><span style="padding-left:9px">' + esc(fmt(a.date, true)) + '</span><span>' + when(a.date) + '</span></div>' });
   const byDate = (a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0;
   const contract = DATE_KEYS.filter(([k]) => termOn(k)).map(keyRow)
     .concat((F.custom || []).map((c, i) => [c, i]).filter(([c]) => !isListingDate(c.label)).map(([c, i]) => custRow(c, i)))
-    .concat(autoDates().map(autoRow)).sort(byDate);
+    .concat(autoDates().map(autoRow)).sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || byDate(a, b));   // closing always last
   const listing = (F.custom || []).map((c, i) => [c, i]).filter(([c]) => isListingDate(c.label)).map(([c, i]) => custRow(c, i)).sort((a, b) => -byDate(a, b));
   const head = t => '<div class="small muted" style="margin:10px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + t + '</div>';
   const past = contract.concat(listing).filter(x => x.st === 'met').length;
@@ -802,22 +802,22 @@ function buildEmail(kind) {
     const greet = joinNames(to.map(p => first(p.name))) || 'there';
     const steps = [];
     if (buyerSide) {
-      if (F.dates.deposit && F.terms.deposit !== false) steps.push('Deposit: your earnest money deposit' + (F.depositAmount ? ' of ' + money(F.depositAmount) : '') + ' is due ' + fmt(F.dates.deposit, true) + '. We will confirm once it is received.');
-      if (F.dates.inspection && F.terms.inspection !== false) steps.push('Inspection: your inspection window closes ' + fmt(F.dates.inspection, true) + '. Your agent will coordinate access and go over the results with you.');
-      if (F.dates.dueDiligence && F.terms.dueDiligence !== false) steps.push('Due diligence: anything else you want to check must be done by ' + fmt(F.dates.dueDiligence, true) + '.');
-      if (F.dates.appraisal && F.terms.appraisal !== false) steps.push('Appraisal: your lender will order the appraisal, due by ' + fmt(F.dates.appraisal, true) + '.');
-      if (F.dates.financing && F.terms.financing !== false) steps.push('Financing: your loan commitment is due ' + fmt(F.dates.financing, true) + '. Please answer your lender\'s document requests quickly — this is the step that most often causes delays.');
-      if (F.dates.closing) steps.push('Closing: on or before ' + fmt(F.dates.closing, true) + '. Your agent will confirm the final walk-through and closing time.');
+      if (F.dates.deposit && F.terms.deposit !== false) steps.push(['deposit', 'Deposit: your earnest money deposit' + (F.depositAmount ? ' of ' + money(F.depositAmount) : '') + ' is due ' + fmt(F.dates.deposit, true) + '. We will confirm once it is received.']);
+      if (F.dates.inspection && F.terms.inspection !== false) steps.push(['inspection', 'Inspection: your inspection window closes ' + fmt(F.dates.inspection, true) + '. Your agent will coordinate access and go over the results with you.']);
+      if (F.dates.dueDiligence && F.terms.dueDiligence !== false) steps.push(['dueDiligence', 'Due diligence: anything else you want to check must be done by ' + fmt(F.dates.dueDiligence, true) + '.']);
+      if (F.dates.appraisal && F.terms.appraisal !== false) steps.push(['appraisal', 'Appraisal: your lender will order the appraisal, due by ' + fmt(F.dates.appraisal, true) + '.']);
+      if (F.dates.financing && F.terms.financing !== false) steps.push(['financing', 'Financing: your loan commitment is due ' + fmt(F.dates.financing, true) + '. Please answer your lender\'s document requests quickly — this is the step that most often causes delays.']);
+      if (F.dates.closing) steps.push(['closing', 'Closing: on or before ' + fmt(F.dates.closing, true) + '. Your agent will confirm the final walk-through and closing time.']);
     } else {
-      if (F.dates.inspection && F.terms.inspection !== false) steps.push('Inspection: the buyer\'s inspection period runs until ' + fmt(F.dates.inspection, true) + '. Your agent will arrange access — please keep the home ready to show.');
-      if (F.dates.appraisal && F.terms.appraisal !== false) steps.push('Appraisal: the buyer\'s lender will send an appraiser before ' + fmt(F.dates.appraisal, true) + '.');
-      if (F.dates.financing && F.terms.financing !== false) steps.push('Financing: the buyer\'s loan commitment is due ' + fmt(F.dates.financing, true) + '. We will let you know as soon as it arrives.');
-      if (F.dates.closing) steps.push('Closing: on or before ' + fmt(F.dates.closing, true) + '. Start planning your move, and contact your utility providers to arrange final readings for closing day.');
+      if (F.dates.inspection && F.terms.inspection !== false) steps.push(['inspection', 'Inspection: the buyer\'s inspection period runs until ' + fmt(F.dates.inspection, true) + '. Your agent will arrange access — please keep the home ready to show.']);
+      if (F.dates.appraisal && F.terms.appraisal !== false) steps.push(['appraisal', 'Appraisal: the buyer\'s lender will send an appraiser before ' + fmt(F.dates.appraisal, true) + '.']);
+      if (F.dates.financing && F.terms.financing !== false) steps.push(['financing', 'Financing: the buyer\'s loan commitment is due ' + fmt(F.dates.financing, true) + '. We will let you know as soon as it arrives.']);
+      if (F.dates.closing) steps.push(['closing', 'Closing: on or before ' + fmt(F.dates.closing, true) + '. Start planning your move, and contact your utility providers to arrange final readings for closing day.']);
     }
     return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you are under agreement, here is what happens next',
       body: 'Hi ' + greet + ',\n\nCongratulations — ' + where() + ' is officially under agreement! My name is Lynne, and I am the transaction coordinator working with ' + (joinNames(ours.map(p => first(p.name))) || 'your agent') + ' to keep everything on track to closing.\n\n' +
         'Important dates\n' + datesBlock() + '\n\n' +
-        (steps.length ? 'What happens next\n' + steps.map((s, i) => (i + 1) + '. ' + s).join('\n') + '\n\n' : '') +
+        (steps.length ? 'What happens next\n' + steps.sort((a, b) => (a[0] === 'closing') - (b[0] === 'closing') || (F.dates[a[0]] < F.dates[b[0]] ? -1 : F.dates[a[0]] > F.dates[b[0]] ? 1 : 0)).map((s, i) => (i + 1) + '. ' + s[1]).join('\n') + '\n\n' : '') +
         'IMPORTANT — wire fraud: I will never send or change wiring instructions by email. Before you send any money, always call your closing attorney or title company at a phone number you already know.\n\n' +
         'Please add these dates to your calendar, and reply with any questions — no question is too small.' + SIGNATURE };
   }

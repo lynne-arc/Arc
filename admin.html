@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p42';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p43';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -523,7 +523,9 @@ function renderSummary() {
     .concat((F.custom || []).filter(c => c.date && c.label && (ua ? !isListingDate(c.label) : true)).map(c => ({ label: c.label, date: c.date })))
     .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
     .sort((a, b) => dateOrder(a.date, b.date, a.k, b.k));
-  const rows = items.map(x => '<tr' + (ua && afterClosing(x.date, x.k) ? ' style="color:var(--red)" title="This date is after closing"' : '') + '><td>' + esc(x.label) + (ua && afterClosing(x.date, x.k) ? ' <b class="small">· after closing</b>' : '') + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
+  const basis = (F.reading || {}).basis || {};
+  const addNote = k => { const b = String(basis[k] || ''); return k && /addend|amend|counter/i.test(b) ? '<div style="font-size:12px;color:var(--amber,#9A6B00)">' + esc(b.length > 70 ? b.slice(0, 70) + '…' : b) + '</div>' : ''; };
+  const rows = items.map(x => '<tr' + (ua && afterClosing(x.date, x.k) ? ' style="color:var(--red)" title="This date is after closing"' : '') + '><td>' + esc(x.label) + (ua && afterClosing(x.date, x.k) ? ' <b class="small">· after closing</b>' : '') + addNote(x.k) + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
   $('#cDeal').innerHTML =
     '<div class="ch"><h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<div class="sumlines">' +
@@ -583,7 +585,7 @@ let SHOW_DONE = { todo: false, check: false, cal: false };
 function doneToggle(key, n, what) { return n ? '<button class="btn ghost small showdone" data-showdone="' + key + '" style="margin-top:6px">' + (SHOW_DONE[key] ? 'Hide ' : 'Show ') + n + ' ' + what + '</button>' : ''; }
 document.addEventListener('click', e => { const b = e.target.closest('[data-showdone]'); if (!b) return; const k = b.dataset.showdone; SHOW_DONE[k] = !SHOW_DONE[k]; ({ todo: renderTodo, check: renderCheck, cal: renderCal })[k](); });
 // A past date is "met" when its checklist item is ticked (or it has none)
-const MET_BY = { deposit: 'Deposit confirmed', inspection: 'Inspection completed', appraisal: 'Appraisal received', financing: 'Financing commitment received', closing: 'Closed' };
+const MET_BY = { deposit: 'Deposit confirmed', inspection: 'Inspection resolved', appraisal: 'Appraisal received', financing: 'Financing commitment received', closing: 'Closed' };
 function metState(k, date) { if (!date || date >= today()) return 'upcoming'; const lab = MET_BY[k]; if (!lab || !checkApplies(lab)) return 'met'; const c = (F.checklist || []).find(x => x.label === lab); return !c || c.done ? 'met' : 'overdue'; }
 const DEP_METHODS = ['DepositLink — Lynne to send the request', 'Earnnest — Lynne to send the request', 'Wire', 'Personal check — mailed to Verani', 'Personal check — dropped off at a Verani office', 'Held by the other brokerage or an attorney', 'Not sure yet'];
 function depShort() { const d = F.depositMethod || {}, m = d.method || ''; if (!m) return '';

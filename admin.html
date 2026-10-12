@@ -462,7 +462,7 @@ function renderSummary() {
     (contract ? '<div class="cfile"><div><div class="n">' + esc(contract.name) + '</div><div class="m">' + esc(F.status) + (F.updated ? ' · updated ' + esc(new Date(F.updated).toLocaleDateString('en-US', {month:'short', day:'numeric'})) : '') + '</div></div>' +
       '<div class="btns"><button class="btn" data-view="' + esc(contract.id) + '">View contract</button><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
     (function () { const L = DOCS.find(x => x.id === F.listingDocId); return L ? '<div class="cfile"><div><div class="n">' + esc(L.name) + '</div><div class="m">Listing agreement</div></div><div class="btns"><button class="btn" data-view="' + esc(L.id) + '">View</button><button class="btn ghost" id="rereadListing">Read again</button></div></div>' : ''; })() +
-    (rows ? '<table class="dates"><tr><th>Item</th><th style="text-align:right">Date</th></tr>' + rows + '</table>' : '<div class="empty">No dates yet. Read the contract or add them in the Calendar.</div>') +
+    (rows || p.price ? '<table class="dates"><tr><th>Item</th><th style="text-align:right">Date</th></tr>' + (p.price ? '<tr><td>' + (isUA() ? 'Sale price' : 'List price') + '</td><td>' + esc(money(p.price)) + '</td></tr>' : '') + rows + '</table>' : '<div class="empty">No dates yet. Read the contract or add them in the Calendar.</div>') +
     '</div>';
   const rl = $('#rereadListing');
   if (rl) rl.onclick = async () => {

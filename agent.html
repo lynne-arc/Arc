@@ -203,15 +203,15 @@ function renderFile(f) {
         (f.parties.length ? f.parties.map(p => '<div class="person"><div class="role">' + esc(p.role) + '</div><div><b>' + esc(p.name) + '</b>' + (p.company ? ' · ' + esc(p.company) : '') + '</div>' +
           '<div class="small muted">' + [p.email ? '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>' : '', esc(p.phone)].filter(Boolean).join(' · ') + '</div></div>').join('') : '<div class="empty">No one added yet.</div>') +
       '</div></section>' +
+      '<section class="card t-green"><div class="ch"><span>Documents</span><label class="btn small">Upload<input type="file" id="up" hidden multiple></label></div><div class="cb" id="docs">' +
+        (f.docs.length ? f.docs.map(d => '<div class="doc"><span>' + esc(d.name.replace(/^\d{4}-\d{2}-\d{2} \d{4} · /, '')) + '<br><span class="small faint">' + esc(d.group) + ' · ' + esc(d.date.slice(0, 10)) + '</span></span><button class="btn small" data-dl="' + esc(d.id) + '">Download</button></div>').join('') : '<div class="empty">No documents yet.</div>') +
+      '</div></section>' +
     '</div><div class="col">' +
       '<section class="card t-blue"><div class="ch">Important dates</div><div class="cb">' +
         (f.dates.length ? '<table>' + f.dates.map(x => '<tr><td>' + esc(x.label) + '</td><td class="r">' + (x.label === 'Closing' ? 'On or before ' : '') + esc(fmt(x.date)) + '</td></tr>').join('') + '</table>' : '<div class="empty">Dates appear here once the contract is in.</div>') +
       '</div></section>' +
       '<section class="card t-pink"><div class="ch">Emails sent on this file</div><div class="cb">' +
         (f.emails.length ? f.emails.map(m => '<details class="mail"><summary><b>' + esc(m.subject) + '</b><div class="small muted">' + esc(new Date(m.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + (m.to ? ' · to ' + esc(m.to) : '') + '</div></summary><pre>' + esc(m.body) + '</pre></details>').join('') : '<div class="empty">Emails from Lynne about this file will be listed here.</div>') +
-      '</div></section>' +
-      '<section class="card t-green"><div class="ch"><span>Documents</span><label class="btn small">Upload<input type="file" id="up" hidden multiple></label></div><div class="cb" id="docs">' +
-        (f.docs.length ? f.docs.map(d => '<div class="doc"><span>' + esc(d.name.replace(/^\d{4}-\d{2}-\d{2} \d{4} · /, '')) + '<br><span class="small faint">' + esc(d.group) + ' · ' + esc(d.date.slice(0, 10)) + '</span></span><button class="btn small" data-dl="' + esc(d.id) + '">Download</button></div>').join('') : '<div class="empty">No documents yet.</div>') +
       '</div></section>' +
     '</div></div>';
   $('#back').onclick = e => { e.preventDefault(); loadFiles(); };

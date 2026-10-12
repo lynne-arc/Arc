@@ -133,7 +133,7 @@ textarea.i{resize:vertical;line-height:1.55}
 .star.on{background:var(--goldsoft);border-color:var(--goldline);color:var(--amber);font-weight:600}
 
 /* docs, log, checklist */
-.doc{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13px;align-items:center}
+.doc{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2);font-size:13px;align-items:center}.doc>a{flex:1;min-width:0}
 .doc:last-child{border:0} .doc a{text-decoration:none;overflow-wrap:anywhere}
 .log{padding:9px 0;border-bottom:1px solid var(--line2);font-size:13px}
 .log:last-child{border:0}
@@ -646,7 +646,7 @@ function renderCal() {
       '<label class="f">Water / sewer<select class="i" data-path="utilities.waterSewer"><option></option>' + opt(['Water & sewer', 'Water only', 'Sewer only', 'No — private well & septic', 'Not sure'], (F.utilities || {}).waterSewer) + '</select></label>' +
       '<label class="f">Gas meter reading<select class="i" data-path="utilities.gas"><option></option>' + opt(['Yes', 'No', 'Not sure'], (F.utilities || {}).gas) + '</select></label></div>') +
     '<div class="btns" style="margin-top:10px">' + doneToggle('cal', past, 'past dates') + '<button class="btn" id="addCustom">+ Add a date</button></div></div>';
-  $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '' }); renderCal(); changed(); };
+  $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '', src: 'Lynne' }); renderCal(); changed(); };
 }
 
 function renderParties() {
@@ -667,13 +667,27 @@ function renderParties() {
   $('#addParty').onclick = () => { F.parties = F.parties || []; F.parties.push({ role: $('#newRole').value, name: '', email: '', phone: '', company: '', reminders: true }); renderParties(); changed(); };
 }
 
+const DOC_ROLES = { pns: 'Executed P&S', listing: 'Listing agreement', buyer: 'Buyer agency agreement' };
+function docRole(id) { return id === F.contractFileId ? 'pns' : id === F.listingDocId ? 'listing' : id === F.buyerAgreementDocId ? 'buyer' : ''; }
 function renderDocs() {
   $('#cDocs').innerHTML = '<div class="ch"><h3>Documents</h3><span class="sub">Drive › Transactions › ' + esc(fileName()) + '</span></div><div class="cb">' +
     '<div class="cfile" style="margin-top:0"><div><div class="n">Executed Contract Summary</div><div class="m">The Important Dates page, ready to send to anyone on the deal</div></div><button class="btn" id="ecsBtn">Download</button></div>' +
-    (DOCS.length ? DOCS.map(d => '<div class="doc"><a href="#" data-view="' + esc(d.id) + '">' + esc(d.name) + '</a><span class="chip">' + esc(d.group) + '</span></div>').join('') : '<div class="empty">No documents yet.</div>') +
+    (DOCS.length ? DOCS.map(d => { const role = docRole(d.id);
+      return '<div class="doc"><a href="#" data-view="' + esc(d.id) + '">' + esc(d.name) + '</a>' +
+        (role ? '<span class="chip gold">' + esc(DOC_ROLES[role]) + '</span>' : '') + '<span class="chip">' + esc(d.group) + '</span>' +
+        '<select class="i docrole" data-docrole="' + esc(d.id) + '" title="Tell ARC what this document is" style="width:auto;padding:3px 6px;font-size:12px"><option value="">Use as…</option>' +
+        Object.keys(DOC_ROLES).map(k => '<option value="' + k + '"' + (k === role ? ' disabled' : '') + '>' + esc(DOC_ROLES[k]) + '</option>').join('') + (role ? '<option value="none">Not this</option>' : '') + '</select></div>'; }).join('') : '<div class="empty">No documents yet.</div>') +
     '<div class="btns" style="margin-top:10px"><select class="i" id="docGroup" style="width:auto">' + opt(DOC_GROUPS, 'ARC internal') + '</select>' +
     '<label class="btn">Upload<input type="file" id="docIn" hidden></label><span class="small faint" id="docMsg"></span></div></div>';
   $('#ecsBtn').onclick = contractSummary;
+  document.querySelectorAll('[data-docrole]').forEach(sel => sel.onchange = async () => {
+    const role = sel.value; if (!role) return;
+    if (role === 'pns' && F.contractFileId && !confirm('Read this document as the executed P&S? It replaces the dates and terms from the last reading, and you\'ll need to Confirm again.')) { sel.value = ''; return; }
+    sel.disabled = true; toast(role === 'pns' ? 'Reading the P&S… about 30 seconds' : 'Saving…');
+    try { await flush(); const r = await call('setDocRole', { id: F.id, docId: sel.dataset.docrole, role }); setFile(r.file, r.docs);
+      toast(role === 'pns' ? (r.error || (r.file.readError ? r.file.readError.message : 'P&S read. Check the details and press Confirm.')) : 'Saved', !!(r.error || (role === 'pns' && r.file.readError))); }
+    catch (err) { toast(err.message, true); sel.disabled = false; sel.value = ''; }
+  });
   $('#docIn').onchange = async e => {
     const file = e.target.files[0]; e.target.value = ''; if (!file) return;
     $('#docMsg').innerHTML = '<span class="spin"></span> Uploading…';

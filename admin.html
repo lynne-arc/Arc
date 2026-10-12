@@ -994,8 +994,9 @@ fv.addEventListener('click', async e => {
   else if (t.dataset.ereset) { e.preventDefault(); E[t.dataset.ereset].touched = false; renderEmail(t.dataset.ereset); }
   else if (t.dataset.ecopy) { const v = E[t.dataset.ecopy].v; try { await navigator.clipboard.writeText(v.body); toast('Email text copied'); } catch (x) { toast('Could not copy — select the text and copy it', true); } }
   else if (t.dataset.egmail) {
-    const v = E[t.dataset.egmail].v;
-    window.open('https://mail.google.com/mail/?authuser=' + encodeURIComponent(OWNER) + '&view=cm&fs=1&to=' + encodeURIComponent(v.to) + '&cc=' + encodeURIComponent(v.cc) + '&su=' + encodeURIComponent(v.subject) + '&body=' + encodeURIComponent(v.body), '_blank', 'noopener');
+    const v = E[t.dataset.egmail].v, test = S.settings.testMode;   // test mode: addressed to Lynne only, like the drafts
+    window.open('https://mail.google.com/mail/?authuser=' + encodeURIComponent(OWNER) + '&view=cm&fs=1&to=' + encodeURIComponent(test ? OWNER : v.to) + '&cc=' + encodeURIComponent(test ? '' : v.cc) +
+      '&su=' + encodeURIComponent((test ? '[TEST] ' : '') + v.subject) + '&body=' + encodeURIComponent((test ? '[TEST MODE — the live version goes to: ' + (v.to || 'nobody yet') + (v.cc ? ' · cc ' + v.cc : '') + ']\n\n' : '') + v.body), '_blank', 'noopener');
   }
   else if (t.dataset.edraft) {
     const kind = t.dataset.edraft, v = E[kind].v;

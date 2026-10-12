@@ -45,6 +45,12 @@ a{color:var(--navy2)}
 @media (max-width:1250px){.grid3{grid-template-columns:minmax(300px,370px) minmax(0,1fr)}.grid3>.col.right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:start}}
 @media (max-width:900px){.grid3{grid-template-columns:1fr}.grid3>.col.right{display:flex}}
 .col.right{position:sticky;top:76px}
+.card>.ch{cursor:pointer;user-select:none}
+.card>.ch::after{content:'▾';margin-left:8px;color:var(--faint);font-size:12px;flex:none;transition:transform .15s}
+.card.collapsed>.ch::after{transform:rotate(-90deg)}
+.card.collapsed>:not(.ch){display:none!important}
+.card.collapsed>.ch{border-bottom:0}
+#cViewer>.ch{cursor:default} #cViewer>.ch::after{content:none}
 .viewer{position:sticky;top:76px;z-index:5;box-shadow:0 8px 30px rgba(30,40,80,.12)}
 .viewer iframe{display:block;width:100%;height:calc(100vh - 150px);min-height:520px;border:0;background:#F1F2F4}
 @media (max-width:1250px){.col.right{position:static}}
@@ -413,6 +419,7 @@ function renderFile() {
         '<section class="card t-blue" id="cCheck"></section>' +
       '</div>' +
     '</div>';
+  applyCollapsed();
   renderPending(); renderSummary(); renderAgent(); renderFileInfo(); renderTerms(); renderCal(); renderParties(); renderDocs();
   ['agents', 'clients', 'vendors'].forEach(renderEmail); renderLog(); renderTodo(); renderCheck(); renderNotes();
 }
@@ -437,10 +444,12 @@ function renderSummary() {
   const cont = TERM_KEYS.filter(([k]) => k !== 'deposit' && F.terms[k] !== false).map(t => t[1]);
   const agentLine = role => people(role).map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ');
   const line = (label, v) => v ? label + ': <b>' + esc(v) + '</b><br>' : '';
-  const rows = DATE_KEYS.filter(([k]) => F.dates[k] && (k === 'effective' || k === 'closing' || F.terms[k] !== false)).map(([k, l]) =>
-    '<tr><td>' + esc(l) + '</td><td>' + (k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (k === 'closing' ? 'On or before ' : '') + esc(fmtShort(F.dates[k])) + '</td></tr>').join('') +
-    (F.custom || []).filter(c => c.date && c.label).map(c => '<tr><td>' + esc(c.label) + '</td><td>' + esc(fmtShort(c.date)) + '</td></tr>').join('') +
-    autoDates().map(a => '<tr><td>' + esc(a.label) + '</td><td>' + esc(fmtShort(a.date)) + '</td></tr>').join('');
+  const ua = isUA();
+  const items = (ua ? DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, label: l, date: F.dates[k] })) : [])
+    .concat((F.custom || []).filter(c => c.date && c.label && (ua ? !isListingDate(c.label) : true)).map(c => ({ label: c.label, date: c.date })))
+    .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
+    .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
+  const rows = items.map(x => '<tr><td>' + esc(x.label) + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
   $('#cSummary').innerHTML =
     '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
@@ -487,6 +496,21 @@ function openViewer(id) {
   $('#closeViewer').onclick = () => { v.hidden = true; v.innerHTML = ''; };
   v.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+const LISTING_LABELS = ['Listing agreement starts', 'Target MLS live date', 'Photo appointment', 'Withhold from MLS until', 'Listing agreement expires'];
+function isUA() { return /Under Agreement|Clear to Close|Closed/.test(F.status) || !!F.contractFileId; }
+function isListingDate(label) { return LISTING_LABELS.indexOf(label) > -1; }
+function termOn(k) { return k === 'effective' || k === 'closing' || F.terms[k] !== false; }
+// Collapsible cards: click a card's title bar. Remembered on this computer.
+const COLLAPSE_DEFAULT = { cFile: true, cParties: true, e_clients: true, e_vendors: true, cLog: true, cNotes: true };
+function collapsedState() { try { return JSON.parse(store('arcCollapsed') || 'null') || COLLAPSE_DEFAULT; } catch (e) { return COLLAPSE_DEFAULT; } }
+function applyCollapsed() { const st = collapsedState(); document.querySelectorAll('#fileView .card[id]').forEach(c => c.classList.toggle('collapsed', !!st[c.id])); }
+document.addEventListener('click', e => {
+  const h = e.target.closest('#fileView .card > .ch');
+  if (!h || e.target.closest('button, a, input, select, label, textarea') || h.parentElement.id === 'cViewer') return;
+  const card = h.parentElement, st = Object.assign({}, collapsedState());
+  st[card.id] = !card.classList.contains('collapsed'); card.classList.toggle('collapsed', st[card.id]);
+  store('arcCollapsed', JSON.stringify(st));
+});
 function fmtShort(s) { if (!s) return ''; const p = String(s).split('-').map(Number); return p[1] + '/' + p[2] + '/' + String(p[0]).slice(2); }
 
 function opt(list, v) { return list.map(o => '<option' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join(''); }
@@ -517,8 +541,14 @@ function feeGaps(terms) {
 }
 function renderAgent() {
   const ct = F.contractTerms || {};
-  const groups = [['From the agent', (F.intake || []).filter(r => r.group !== 'Under agreement')], ['Under agreement (agent)', (F.intake || []).filter(r => r.group === 'Under agreement')],
-    ['From the listing agreement', F.listingRows || []], ['From the P&S', ct.concessions ? [{ label: 'Concessions', value: ct.concessions }] : []]].filter(g => g[1].length);
+  const fromAgent = (F.intake || []).filter(r => r.group !== 'Under agreement'), uaAgent = (F.intake || []).filter(r => r.group === 'Under agreement');
+  const pns = ['From the P&S', ct.concessions ? [{ label: 'Concessions', value: ct.concessions }] : []];
+  const listingFirst = !isUA();
+  const groups = (listingFirst
+    ? [['From the agent', fromAgent], ['From the listing agreement', F.listingRows || []], ['Under agreement (agent)', uaAgent], pns]
+    : (F.listingRows && F.listingRows.length || uaAgent.length
+        ? [['Under agreement (agent)', uaAgent], pns, ['Listing: from the agent', fromAgent], ['From the listing agreement', F.listingRows || []]]
+        : [['From the agent', fromAgent], pns])).filter(g => g[1].length);
   const el = $('#cAgent');
   if (!groups.length) { el.hidden = true; return; }
   el.hidden = false;
@@ -565,10 +595,20 @@ function renderTerms() {
 }
 
 function renderCal() {
+  const basis = (F.reading || {}).basis || {}, ua = isUA();
+  const keyRow = ([k, l]) => ({ date: F.dates[k] || '', html: '<div class="calrow" title="' + esc(basis[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>' });
+  const custRow = (c, i) => ({ date: c.date || '', html: '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>' });
+  const autoRow = a => ({ date: a.date, html: '<div class="calrow" title="Moves with the closing date. On this day a request email to title / attorney is drafted for you."><span>' + esc(a.label) + '<div class="small faint">' + esc(a.note) + ' · email to title / attorney</div></span><span style="padding-left:9px">' + esc(fmt(a.date, true)) + '</span><span>' + when(a.date) + '</span></div>' });
+  const byDate = (a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0;
+  const contract = DATE_KEYS.filter(([k]) => termOn(k)).map(keyRow)
+    .concat((F.custom || []).map((c, i) => [c, i]).filter(([c]) => !isListingDate(c.label)).map(([c, i]) => custRow(c, i)))
+    .concat(autoDates().map(autoRow)).sort(byDate);
+  const listing = (F.custom || []).map((c, i) => [c, i]).filter(([c]) => isListingDate(c.label)).map(([c, i]) => custRow(c, i)).sort((a, b) => -byDate(a, b));
+  const head = t => '<div class="small muted" style="margin:10px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + t + '</div>';
   $('#cCal').innerHTML = '<div class="ch"><h3>Calendar</h3><span class="sub">Change any date here</span></div><div class="cb">' +
-    DATE_KEYS.map(([k, l]) => '<div class="calrow" title="' + esc(((F.reading || {}).basis || {})[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>').join('') +
-    (F.custom || []).map((c, i) => '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>').join('') +
-    autoDates().map(a => '<div class="calrow" title="Moves with the closing date. On this day a request email to title / attorney is drafted for you."><span>' + esc(a.label) + '<div class="small faint">' + esc(a.note) + ' · email to title / attorney</div></span><span style="padding-left:9px">' + esc(fmt(a.date, true)) + '</span><span>' + when(a.date) + '</span></div>').join('') +
+    (ua || !listing.length ? head('Contract dates') + contract.map(x => x.html).join('') : '') +
+    (listing.length ? head('Listing dates') + listing.map(x => x.html).join('') : '') +
+    (!ua && listing.length ? head('Contract dates') + contract.map(x => x.html).join('') : '') +
     '<div class="row3" style="margin-top:10px;grid-template-columns:1fr 1fr 1fr">' +
       '<label class="f">Heating fuel<select class="i" data-path="utilities.fuel"><option></option>' + opt(['None', 'Oil', 'Propane', 'Oil & propane', 'Not sure'], (F.utilities || {}).fuel) + '</select></label>' +
       '<label class="f">Water / sewer<select class="i" data-path="utilities.waterSewer"><option></option>' + opt(['Water & sewer', 'Water only', 'Sewer only', 'No — private well & septic', 'Not sure'], (F.utilities || {}).waterSewer) + '</select></label>' +

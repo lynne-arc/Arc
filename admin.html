@@ -367,9 +367,21 @@ async function showHome() {
       '</div></div>' +
       '<div class="board">' + lanes + '</div>' +
     '</div>' +
+    '<div class="card" style="margin-top:18px"><div class="ch"><h3>Agent portal</h3><span class="sub">Open a file or add a P&amp;S for an agent</span></div><div class="cb">' +
+      '<div class="btns"><select class="i" id="asAgent" style="flex:1;min-width:220px"><option value="">Choose an agent…</option>' +
+        S.contacts.filter(c => c.type === 'Agent' && c.email).sort((a, b) => String(a.name).localeCompare(b.name)).map(c => '<option value="' + esc(c.email) + '">' + esc(c.name + (c.company ? ' · ' + c.company : '') + ' · ' + c.email) + '</option>').join('') +
+      '</select><button class="btn primary" id="asGo">Open their portal</button></div>' +
+      '<div class="small faint" style="margin-top:6px">Opens in a new tab, signed in as them for 12 hours. Anything you send goes on their file as if they sent it.</div></div></div>' +
     (S.files.length ? '' : '<div class="banner" style="margin-top:18px"><div><b>Welcome to your TC Dashboard</b><div class="small muted">Start with "+ New file", "Read a new contract", or send an agent your File Input page.</div></div></div>');
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
+document.addEventListener('click', async e => {
+  if (!e.target.closest('#asGo')) return;
+  const email = $('#asAgent').value; if (!email) return toast('Choose an agent first', true);
+  const w = window.open('', '_blank');   // opened now so the browser doesn't block it
+  try { const r = await call('portalAs', { email }); if (w) w.location = r.url; else location.href = r.url; }
+  catch (err) { if (w) w.close(); toast(err.message, true); }
+});
 
 /* =================== OPEN A FILE =================== */
 async function openFile(id) {

@@ -131,19 +131,22 @@ $('#signForm').addEventListener('submit', async e => {
   catch (err) { toast(err.message, true); }
   b.disabled = false; b.textContent = 'Email me a sign-in link';
 });
-function signOut() { store('arcAgentToken', null); TOKEN = ''; location.href = location.pathname; }
+// Lynne working in an agent's portal: the sign-in lives in this tab only and never touches the agent's own.
+function asTok(v) { try { if (v === undefined) return sessionStorage.getItem('arcAgentToken'); if (v === null) sessionStorage.removeItem('arcAgentToken'); else sessionStorage.setItem('arcAgentToken', v); } catch (e) { return null; } }
+function signOut() { if (asTok()) { asTok(null); window.close(); location.href = location.pathname; return; } store('arcAgentToken', null); TOKEN = ''; location.href = location.pathname; }
 
 async function start() {
   const qs = new URLSearchParams(location.search);
-  if (qs.get('t')) { store('arcAgentToken', qs.get('t')); history.replaceState(null, '', location.pathname); }
-  TOKEN = store('arcAgentToken') || '';
+  if (qs.get('t')) { if (qs.get('as')) asTok(qs.get('t')); else store('arcAgentToken', qs.get('t')); history.replaceState(null, '', location.pathname); }
+  const AS = !!asTok();
+  TOKEN = asTok() || store('arcAgentToken') || '';
   if (!TOKEN) { $('#signin').hidden = false; return; }
   try {
     ME = await call('agentMe');
-    $('#who').innerHTML = esc(ME.name || ME.email) + '<button id="out">Sign out</button>'; $('#who').hidden = false;
+    $('#who').innerHTML = (AS ? '<span style="background:#FFF4D6;color:#7A5A12;padding:3px 8px;border-radius:6px;margin-right:6px">Lynne, acting as</span>' : '') + esc(ME.name || ME.email) + '<button id="out">' + (AS ? 'Close' : 'Sign out') + '</button>'; $('#who').hidden = false;
     $('#out').onclick = signOut;
     await loadFiles();
-  } catch (err) { store('arcAgentToken', null); TOKEN = ''; $('#signin').hidden = false; if (!/sign in/i.test(err.message)) toast(err.message, true); }
+  } catch (err) { if (AS) asTok(null); else store('arcAgentToken', null); TOKEN = ''; $('#signin').hidden = false; if (!/sign in/i.test(err.message)) toast(err.message, true); }
 }
 
 /* ---------- my files ---------- */

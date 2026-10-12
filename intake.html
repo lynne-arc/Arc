@@ -256,7 +256,7 @@ async function call(action, payload) {
 // Signed in through the agent portal? Then we know who you are.
 const QS = new URLSearchParams(location.search);
 const PORTAL = QS.has('portal');
-let TOKEN = ''; try { TOKEN = localStorage.getItem('arcAgentToken') || ''; } catch (e) {}
+let TOKEN = ''; try { TOKEN = sessionStorage.getItem('arcAgentToken') || localStorage.getItem('arcAgentToken') || ''; } catch (e) {}
 function onceQuestions(a) {
   if (a.platform) form.platform.value = a.platform;
   // platform: asked once per agent. "Added to the loop": asked on every new file, not when adding a P&S to a listing ARC already has.
@@ -285,7 +285,7 @@ async function startPortal() {
       document.querySelector('header p').textContent = 'Add the executed P&S and the closing details. I already have the property and your sellers.';
     }
     showSections();
-  } catch (e) { try { localStorage.removeItem('arcAgentToken'); } catch (x) {} location.href = 'agent.html'; }
+  } catch (e) { try { if (sessionStorage.getItem('arcAgentToken')) sessionStorage.removeItem('arcAgentToken'); else localStorage.removeItem('arcAgentToken'); } catch (x) {} location.href = 'agent.html'; }
 }
 // Public form: returning agents get their details filled in from their email
 async function lookupAgent() {

@@ -782,7 +782,7 @@ function partyOffice(p) {
 function officeLine(p) {
   const st = fileState(), offs = partyOffice(p); if (!offs.length) return '';
   const withLic = offs.find(o => (o.licenses || {})[st]);
-  if (withLic) return '<div class="small muted">Office: ' + esc(withLic.name) + ' · ' + esc(st) + ' office lic # <b>' + esc(withLic.licenses[st]) + '</b>' + (withLic.phone ? ' · ' + esc(withLic.phone) : '') + '</div>';
+  if (withLic) { const via = (withLic.licFrom || {})[st]; return '<div class="small muted">Office: ' + esc(withLic.name) + ' · ' + esc(st) + ' office lic # <b>' + esc(withLic.licenses[st]) + '</b>' + (via ? ' (' + esc(via) + ' office)' : '') + (withLic.phone ? ' · ' + esc(withLic.phone) : '') + '</div>'; }
   return '<div class="small" style="color:var(--red)">Office: ' + esc(offs.map(o => o.name).join(' / ')) + ' · no ' + esc(st || 'state') + ' office license on the roster</div>';
 }
 function renderParties() {

@@ -369,7 +369,8 @@ async function showHome() {
     '</div>' +
     '<div class="card" style="margin-top:18px"><div class="ch"><h3>Agent portal</h3><span class="sub">Open a file or add a P&amp;S for an agent</span></div><div class="cb">' +
       '<div class="btns"><select class="i" id="asAgent" style="flex:1;min-width:220px"><option value="">Choose an agent…</option>' +
-        S.contacts.filter(c => c.type === 'Agent' && c.email).sort((a, b) => String(a.name).localeCompare(b.name)).map(c => '<option value="' + esc(c.email) + '">' + esc(c.name + (c.company ? ' · ' + c.company : '') + ' · ' + c.email) + '</option>').join('') +
+        S.contacts.filter(c => c.type === 'Agent' && c.email && (S.clientAgents || []).indexOf(String(c.email).trim().toLowerCase()) > -1)
+          .filter((c, i, a) => a.findIndex(z => String(z.email).toLowerCase() === String(c.email).toLowerCase()) === i).sort((a, b) => String(a.name).localeCompare(b.name)).map(c => '<option value="' + esc(c.email) + '">' + esc(c.name + (c.company ? ' · ' + c.company : '') + ' · ' + c.email) + '</option>').join('') +
       '</select><button class="btn primary" id="asGo">Open their portal</button></div>' +
       '<div class="small faint" style="margin-top:6px">Opens in a new tab, signed in as them for 12 hours. Anything you send goes on their file as if they sent it.</div></div></div>' +
     '<div class="card" style="margin-top:18px" id="teamsCard"></div>' +

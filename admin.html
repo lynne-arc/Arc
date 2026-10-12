@@ -68,7 +68,7 @@ a{color:var(--navy2)}
 .cb{padding:14px}
 .card.email .ch{background:#FBEEE9}
 .card.email.clients .ch{background:#F9ECEF}
-.card.email.vendors .ch{background:#EFEDF7}
+.card.email.vendors .ch,.card.email.title .ch{background:#EFEDF7} .card.email.lender .ch{background:#EAF3F1}
 .pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;min-height:28px}
 .pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:20px;padding:2px 10px;font-size:12px;background:#fff;text-transform:none;letter-spacing:0;color:var(--ink)}
 .pill small{color:var(--faint)}
@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p39';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p41';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -483,7 +483,8 @@ function renderFile() {
         '<section class="card t-green" id="cDocs"></section>' +
         '<section class="card email agents" id="e_agents"></section>' +
         '<section class="card email clients" id="e_clients"></section>' +
-        '<section class="card email vendors" id="e_vendors"></section>' +
+        '<section class="card email title" id="e_title"></section>' +
+        '<section class="card email lender" id="e_lender"></section>' +
         '<section class="card t-grey" id="cLog"></section>' +
         '<section class="card t-sand" id="cNotes"></section>' +
       '</div>' +
@@ -494,7 +495,7 @@ function renderFile() {
     '</div>';
   applyCollapsed();
   renderPending(); renderSummary(); renderAgent(); renderFileInfo(); renderTerms(); renderCal(); renderParties(); renderDocs();
-  ['agents', 'clients', 'vendors'].forEach(renderEmail); renderLog(); renderTodo(); renderCheck(); renderNotes();
+  ['agents', 'clients', 'title', 'lender'].forEach(renderEmail); renderLog(); renderTodo(); renderCheck(); renderNotes();
 }
 
 function renderPending() {
@@ -587,7 +588,7 @@ function metState(k, date) { if (!date || date >= today()) return 'upcoming'; co
 const DEP_METHODS = ['DepositLink — Lynne to send the request', 'Earnnest — Lynne to send the request', 'Wire', 'Personal check — mailed to Verani', 'Personal check — dropped off at a Verani office', 'Held by the other brokerage or an attorney', 'Not sure yet'];
 function depShort() { const d = F.depositMethod || {}, m = d.method || ''; if (!m) return '';
   return m.replace(/ — Lynne to send the request/, '').replace(/Personal check — mailed to Verani/, 'Check, mailed to Verani').replace(/Personal check — dropped off at a Verani office/, 'Check, drop-off' + (d.office ? ' ' + d.office : '')).replace(/Held by the other brokerage or an attorney/, 'Held elsewhere'); }
-const COLLAPSE_DEFAULT = { cFile: true, cParties: true, e_clients: true, e_vendors: true, cLog: true, cNotes: true };
+const COLLAPSE_DEFAULT = { cFile: true, cParties: true, e_clients: true, e_title: true, e_lender: true, cLog: true, cNotes: true };
 function collapsedState() { try { return JSON.parse(store('arcCollapsed') || 'null') || COLLAPSE_DEFAULT; } catch (e) { return COLLAPSE_DEFAULT; } }
 function applyCollapsed() { const st = collapsedState(); document.querySelectorAll('#fileView .card[id]').forEach(c => c.classList.toggle('collapsed', !!st[c.id])); }
 document.addEventListener('click', e => {
@@ -991,16 +992,26 @@ function buildEmail(kind) {
         'IMPORTANT — wire fraud: I will never send or change wiring instructions by email. Before you send any money, always call your closing attorney or title company at a phone number you already know.\n\n' +
         'Please add these dates to your calendar, and reply with any questions — no question is too small.' + SIGNATURE };
   }
-  const to = partiesByRoles(['Title / attorney', 'Lender']);
-  return { to: emailsOf(to), cc: emailsOf(partiesByRoles(['Listing agent', 'Buyer agent'])), subject: tag() + ': under agreement',
-    body: 'Hello all,\n\n' + where() + ' is under agreement. Here is everyone on the deal and how to reach them, along with the key dates. Please confirm receipt and let me know what you need from us.\n\n' +
+  const agentsCc = emailsOf(partiesByRoles(['Listing agent', 'Buyer agent']));
+  if (kind === 'lender') {
+    const lt = partiesByRoles(['Lender']), hi = lt.length ? 'Hello ' + joinNames(lt.map(p => first(p.name))) + ',' : 'Hello,';
+    const fin = [F.dates.financing && termOn('financing') ? 'Loan commitment due: ' + fmt(F.dates.financing, true) : '', F.dates.appraisal && termOn('appraisal') ? 'Appraisal due: ' + fmt(F.dates.appraisal, true) : ''].filter(Boolean);
+    return { to: emailsOf(lt), cc: agentsCc, subject: tag() + ': under agreement',
+      body: hi + '\n\n' + where() + ' is under agreement and I\'m coordinating the transaction. Here is everyone on the deal and the key dates.' + (fin.length ? '\n\nYour dates\n' + fin.join('\n') : '') + '\n\n' +
+        'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
+        '\n\nPlease let me know as soon as the appraisal is in and the commitment is issued, and copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
+  }
+  const tt = partiesByRoles(['Title / attorney']), hi = tt.length ? 'Hello ' + joinNames(tt.map(p => first(p.name))) + ',' : 'Hello,';
+  return { to: emailsOf(tt), cc: agentsCc, subject: tag() + ': under agreement',
+    body: hi + '\n\n' + where() + ' is under agreement. Here is everyone on the deal and how to reach them, along with the key dates. Please confirm receipt and let me know what you need from us.\n\n' +
       'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
-      '\n\nThe executed contract will follow separately. Please copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
+      '\n\nPlease copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
 }
 const EMAIL_META = {
   agents: ['Email · Agents', 'To the agents on the deal'],
   clients: ['Email · Clients', 'You are under agreement — here is what happens next'],
-  vendors: ['Email · Title & lender', 'To the closing team'],
+  title: ['Email · Title / attorney', 'To the closing agent'],
+  lender: ['Email · Lender', 'To the lender'],
 };
 function pills(list) {
   const arr = String(list || '').split(',').map(x => x.trim()).filter(Boolean);
@@ -1013,9 +1024,13 @@ function renderEmail(kind) {
   E[kind] = E[kind] || { touched: false };
   if (!E[kind].touched) E[kind].v = buildEmail(kind);
   const v = E[kind].v, ed = E[kind].editRec;
+  const el = $('#e_' + kind);
+  if (kind === 'lender') { el.hidden = F.terms.financing === false && !partiesByRoles(['Lender']).length; if (el.hidden) return; }   // cash deal: no lender email
+  const last = (F.emails || []).find(m => m.kind === kind);   // newest first
   $('#e_' + kind).innerHTML = '<div class="ch"><div><h3>' + EMAIL_META[kind][0] + '</h3><div style="font:700 17px var(--serif);margin-top:2px">' + esc(EMAIL_META[kind][1]) + '</div></div>' +
-    '<div class="btns"><button class="btn" data-ecopy="' + kind + '">Copy</button><button class="btn" data-egmail="' + kind + '">Open in Gmail</button><button class="btn primary" data-edraft="' + kind + '">Save as draft</button></div></div>' +
+    (last ? '<span class="sub">✓ Drafted ' + esc(new Date(last.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '</span>' : '') + '</div>' +
     '<div class="cb stack">' +
+      '<div class="btns" style="justify-content:flex-end"><button class="btn" data-ecopy="' + kind + '">Copy</button><button class="btn" data-egmail="' + kind + '">Open in Gmail</button><button class="btn primary" data-edraft="' + kind + '">Save as draft</button></div>' +
       (ed ? '<div class="row2"><label class="f">To<input class="i" data-email="' + kind + '" data-ef="to" value="' + esc(v.to) + '"></label>' +
             '<label class="f">Cc<input class="i" data-email="' + kind + '" data-ef="cc" value="' + esc(v.cc) + '"></label></div>' +
             '<label class="f">Subject<input class="i" data-email="' + kind + '" data-ef="subject" value="' + esc(v.subject) + '"></label>'
@@ -1049,7 +1064,7 @@ function renderLog() {
 }
 
 // Checklist items that only apply when that contingency is in the contract
-const CHECK_TERM = { 'Appraisal received': 'appraisal', 'Financing commitment received': 'financing', 'Inspection completed': 'inspection', 'Inspection resolved': 'inspection' };
+const CHECK_TERM = { 'Lender email sent': 'financing', 'Appraisal received': 'appraisal', 'Financing commitment received': 'financing', 'Inspection completed': 'inspection', 'Inspection resolved': 'inspection' };
 function checkApplies(label) { return !CHECK_TERM[label] || F.terms[CHECK_TERM[label]] !== false; }
 function renderCheck() {
   let n = (F.checklist || []).filter(c => c.done).length;
@@ -1132,7 +1147,7 @@ fv.addEventListener('click', async e => {
       const att = F.contractFileId && E[kind].attach !== false;
       const r = await call('draft', Object.assign({ id: F.id, kind, to: v.to, cc: v.cc, subject: v.subject, body: v.body },
         att ? { summaryHtml: summaryPdfHtml(), summaryName: 'Executed Contract Summary - ' + ((F.property || {}).address || F.id) + '.pdf' } : {}));
-      F.emails = r.file.emails; F.checklist = r.file.checklist; renderLog(); renderCheck();
+      F.emails = r.file.emails; F.checklist = r.file.checklist; renderLog(); renderCheck(); renderEmail(kind);
       toast(S.settings.testMode ? 'Test draft saved to your Gmail Drafts' : 'Draft saved — review it in Gmail Drafts and send');
     } catch (err) { toast(err.message, true); }
     t.disabled = false; t.textContent = 'Save as draft';
@@ -1161,7 +1176,7 @@ function changed(path) {
   $('#saveState').textContent = 'Unsaved…';
   renderSummary(); renderPending();
   if (!path || path.indexOf('dates.') === 0) DATE_KEYS.forEach(([k]) => { const c = document.querySelector('[data-chip="' + k + '"]'); if (c) c.innerHTML = F.dates[k] && k !== 'effective' ? when(F.dates[k]) : ''; });
-  ['agents', 'clients', 'vendors'].forEach(k => { if (!E[k] || !E[k].touched) renderEmail(k); });
+  ['agents', 'clients', 'title', 'lender'].forEach(k => { if (!E[k] || !E[k].touched) renderEmail(k); });
   clearTimeout(saveTimer); saveTimer = setTimeout(save, 900);
 }
 async function save() {

@@ -469,7 +469,7 @@ function renderSummary() {
       line('Buyer', F.buyers || names('Buyer')) + line('Seller', F.sellers || names('Seller')) +
       line('Listing agent', agentLine('Listing agent')) + line('Buyer\'s agent', agentLine('Buyer agent')) +
       line('Co-broke fee', feeShort()) + line('Price', p.price ? money(p.price) : '') +
-      'Contingencies: <b>' + esc(cont.concat(ct.otherContingencies || []).join(', ') || 'None') + '</b>' +
+      'Contingencies: <b>' + esc(cont.concat(otherConts()).join(', ') || 'None') + '</b>' +
     '</div>' +
     (contract ? '<div class="cfile"><div><div class="n">' + esc(contract.name) + '</div><div class="m">' + esc(F.status) + (F.updated ? ' · updated ' + esc(new Date(F.updated).toLocaleDateString('en-US', {month:'short', day:'numeric'})) : '') + '</div></div>' +
       '<div class="btns"><button class="btn" data-view="' + esc(contract.id) + '">View contract</button><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
@@ -543,6 +543,9 @@ function fld(label, path, type, extra) {
 }
 /* Fee checks: buyer agreement vs seller-paid, and listing agreement vs what the buyer agent asked for */
 // Fee helpers. Gross/net comes from the listing or buyer agreement unless the P&S says otherwise.
+function shortCont(c) { return String(c || '').replace(/\s*\([^)]*\)/g, '').trim(); }
+// Stand-alone contingencies only; anything that lives under due diligence / inspection stays off this line
+function otherConts() { return ((F.contractTerms || {}).otherContingencies || []).filter(c => !/condo|association|co-?op|pud|covenant|easement|insurance|flood|radon|septic|water|well|survey|lead|pest|termite|inspection|due diligence/i.test(c)).map(shortCont); }
 function feeBasis(v) { v = String(v || '').toLowerCase(); return /net/.test(v) ? 'net' : /gross/.test(v) ? 'gross' : ''; }
 function psBasis() { const ct = F.contractTerms || {}, s = ct.buyerFee || {}; return feeBasis(s.basis) || (/\bnet\b/i.test(ct.buyerFeeText || '') ? 'net' : /gross/i.test(ct.buyerFeeText || '') ? 'gross' : ''); }
 function waiveWord(w) { return /^Yes/.test(w || '') ? 'Waived' : /^Partly/.test(w || '') ? 'partly waived' : /^No/.test(w || '') ? 'buyer pays' : 'who pays?'; }
@@ -603,7 +606,9 @@ function renderAgent() {
         ? [['Under agreement (agent)', uaAgent], pns, ['Listing: from the agent', fromAgent], ['From the listing agreement', F.listingRows || []]]
         : [['From the agent', fromAgent], pns])).filter(g => g[1].length);
   const el = $('#cAgent');
-  const buyerSide = /Buyer side|Both/.test(F.rep || '') || !!F.buyerAgreementFee, sellerSide = /Seller side|Both/.test(F.rep || '') || !!F.listingBuyerFee;
+  const oursAs = role => (F.parties || []).some(p => p.ours && p.role === role);
+  const buyerSide = /Buyer side|Both/.test(F.rep || '') || !!(F.buyerAgreementFee && F.buyerAgreementFee.amount) || !!F.buyerAgreementDocId || oursAs('Buyer agent'),
+    sellerSide = /Seller side|Both/.test(F.rep || '') || !!(F.listingBuyerFee && F.listingBuyerFee.amount) || oursAs('Listing agent');
   const fees = isUA() && (buyerSide || sellerSide);
   if (!groups.length && !fees) { el.hidden = true; return; }
   el.hidden = false;
@@ -721,7 +726,7 @@ function renderDocs() {
       return '<div class="doc"><a href="#" data-view="' + esc(d.id) + '">' + esc(d.name) + '</a>' +
         (role ? '<span class="chip gold">' + esc(DOC_ROLES[role]) + '</span>' : '') + '<span class="chip">' + esc(d.group) + '</span>' +
         '<select class="i docrole" data-docrole="' + esc(d.id) + '" title="Tell ARC what this document is" style="width:auto;padding:3px 6px;font-size:12px"><option value="">Use as…</option>' +
-        Object.keys(DOC_ROLES).map(k => '<option value="' + k + '"' + (k === role ? ' disabled' : '') + '>' + esc(DOC_ROLES[k]) + '</option>').join('') + (role ? '<option value="none">Not this</option>' : '') + '</select></div>'; }).join('') : '<div class="empty">No documents yet.</div>') +
+        Object.keys(DOC_ROLES).map(k => '<option value="' + k + '">' + (k === role ? 'Read again as ' + esc(DOC_ROLES[k]) : esc(DOC_ROLES[k])) + '</option>').join('') + (role ? '<option value="none">Not this</option>' : '') + '</select></div>'; }).join('') : '<div class="empty">No documents yet.</div>') +
     '<div class="btns" style="margin-top:10px"><select class="i" id="docGroup" style="width:auto">' + opt(DOC_GROUPS, 'ARC internal') + '</select>' +
     '<label class="btn">Upload<input type="file" id="docIn" hidden></label><span class="small faint" id="docMsg"></span></div></div>';
   $('#ecsBtn').onclick = contractSummary;
@@ -747,7 +752,7 @@ function summaryData() {
     ['Listing agent', people('Listing agent').map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ')],
     ['Buyer\'s agent', people('Buyer agent').map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ')],
     ['Title / attorney', names('Title / attorney')], ['Lender', names('Lender')],
-    ['Price', p.price ? money(p.price) : ''], ['Co-broke fee', ct.buyerFeeText], ['Contingencies', cont.concat(ct.otherContingencies || []).join(', ') || 'None']].filter(r => r[1]);
+    ['Price', p.price ? money(p.price) : ''], ['Co-broke fee', ct.buyerFeeText], ['Contingencies', cont.concat(otherConts()).join(', ') || 'None']].filter(r => r[1]);
   // Contract dates only (no listing dates, no ARC's own reminders), in date order, closing always last
   const dates = DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, l, d: F.dates[k] }))
     .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))

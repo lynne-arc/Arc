@@ -389,7 +389,8 @@ function renderTeams() {
   const lic = m => ['NH', 'ME', 'MA'].filter(k => (m.licenses || {})[k]).map(k => k + ' ' + m.licenses[k]).join(' · ');
   const view = '<div class="ch"><h3>Agent teams</h3><span class="sub">Every member sees the team\'s files in their portal</span></div><div class="cb">' +
     (teams.length ? teams.map(t => '<div class="up" style="cursor:default;align-items:flex-start"><div><b>' + esc(t.name) + '</b>' + (t.brokerage ? ' <span class="small muted">· ' + esc(t.brokerage) + '</span>' : '') +
-      (t.members || []).map(m => '<div class="small">' + esc(m.name) + ' <span class="muted">' + esc([m.email, m.phone].filter(Boolean).join(' · ')) + '</span>' + (lic(m) ? ' <span class="faint">· ' + esc(lic(m)) + '</span>' : '') + '</div>').join('') +
+      (t.members || []).map(m => { const offs = partyOffice(m); return '<div class="small">' + esc(m.name) + ' <span class="muted">' + esc([m.email, m.phone].filter(Boolean).join(' · ')) + '</span>' + (lic(m) ? ' <span class="faint">· ' + esc(lic(m)) + '</span>' : '') +
+        (offs.length ? ' <span class="faint">· ' + esc(offs.map(o => o.name + ' office ' + ['NH', 'ME', 'MA'].filter(k => (o.licenses || {})[k]).map(k => k + ' ' + o.licenses[k]).join(' ')).join(' / ')) + '</span>' : '') + '</div>'; }).join('') +
       sharedNote(t) +
       '</div><button class="btn small" data-editteam="' + esc(t.id) + '">Edit</button></div>').join('') : '<div class="empty">No teams yet.</div>') +
     '<div class="btns" style="margin-top:8px"><button class="btn" data-editteam="new">+ New team</button></div></div>';
@@ -772,6 +773,18 @@ function partyLicense(p) {
   const c = S.contacts.find(x => nm && String(x.name || '').trim().toLowerCase() === nm && x.licenses && x.licenses[st]) || S.contacts.find(x => em && String(x.email || '').toLowerCase() === em && !x.shared);
   return (c && c.licenses && c.licenses[st]) || '';
 }
+// The agent's office license (the brokerage branch license) for the property's state, from the roster
+function partyOffice(p) {
+  const nm = String(p.name || '').trim().toLowerCase(), em = String(p.email || '').toLowerCase();
+  const c = S.contacts.find(x => nm && String(x.name || '').trim().toLowerCase() === nm && (x.offices || []).length) || S.contacts.find(x => em && !x.shared && String(x.email || '').toLowerCase() === em && (x.offices || []).length);
+  return c ? c.offices : [];
+}
+function officeLine(p) {
+  const st = fileState(), offs = partyOffice(p); if (!offs.length) return '';
+  const withLic = offs.find(o => (o.licenses || {})[st]);
+  if (withLic) return '<div class="small muted">Office: ' + esc(withLic.name) + ' · ' + esc(st) + ' office lic # <b>' + esc(withLic.licenses[st]) + '</b>' + (withLic.phone ? ' · ' + esc(withLic.phone) : '') + '</div>';
+  return '<div class="small" style="color:var(--red)">Office: ' + esc(offs.map(o => o.name).join(' / ')) + ' · no ' + esc(st || 'state') + ' office license on the roster</div>';
+}
 function renderParties() {
   const roles = S.settings.roles || [];
   $('#cParties').innerHTML = '<div class="ch"><h3>Parties</h3><span class="sub">Saved to your contacts automatically</span></div><div class="cb">' +
@@ -784,7 +797,7 @@ function renderParties() {
         '<div class="row2"><input class="i" list="dlEmails" type="email" data-party="' + i + '" data-pf="email" value="' + esc(p.email) + '" placeholder="Email">' +
         '<input class="i" data-party="' + i + '" data-pf="phone" value="' + esc(p.phone) + '" placeholder="Phone"></div>' +
         '<input class="i" data-party="' + i + '" data-pf="company" value="' + esc(p.company) + '" placeholder="Company / brokerage">' +
-        (/agent/i.test(p.role) ? '<input class="i" data-party="' + i + '" data-pf="license" value="' + esc(p.license || partyLicense(p)) + '" placeholder="' + esc(fileState() || 'State') + ' license #">' : '') +
+        (/agent/i.test(p.role) ? '<input class="i" data-party="' + i + '" data-pf="license" value="' + esc(p.license || partyLicense(p)) + '" placeholder="' + esc(fileState() || 'State') + ' license #">' + officeLine(p) : '') +
         '<label class="small muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-party="' + i + '" data-pf="reminders"' + (p.reminders !== false ? ' checked' : '') + '> Gets deadline reminders</label>' +
       '</div></div>').join('') || '<div class="empty">No one on this file yet.</div>') +
     '<div class="btns" style="margin-top:6px"><select class="i" id="newRole" style="width:auto">' + opt(roles, 'Buyer') + '</select><button class="btn" id="addParty">+ Add person</button></div></div>';

@@ -449,7 +449,7 @@ function renderSummary() {
     .concat((F.custom || []).filter(c => c.date && c.label && (ua ? !isListingDate(c.label) : true)).map(c => ({ label: c.label, date: c.date })))
     .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
     .sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0);
-  const rows = items.map(x => '<tr><td>' + esc(x.label) + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
+  const rows = items.map(x => '<tr><td>' + esc(x.label) + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
   $('#cSummary').innerHTML =
     '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
@@ -501,6 +501,9 @@ function isUA() { return /Under Agreement|Clear to Close|Closed/.test(F.status) 
 function isListingDate(label) { return LISTING_LABELS.indexOf(label) > -1; }
 function termOn(k) { return k === 'effective' || k === 'closing' || F.terms[k] !== false; }
 // Collapsible cards: click a card's title bar. Remembered on this computer.
+const DEP_METHODS = ['DepositLink — Lynne to send the request', 'Earnnest — Lynne to send the request', 'Wire', 'Personal check — mailed to Verani', 'Personal check — dropped off at a Verani office', 'Held by the other brokerage or an attorney', 'Not sure yet'];
+function depShort() { const d = F.depositMethod || {}, m = d.method || ''; if (!m) return '';
+  return m.replace(/ — Lynne to send the request/, '').replace(/Personal check — mailed to Verani/, 'Check, mailed to Verani').replace(/Personal check — dropped off at a Verani office/, 'Check, drop-off' + (d.office ? ' ' + d.office : '')).replace(/Held by the other brokerage or an attorney/, 'Held elsewhere'); }
 const COLLAPSE_DEFAULT = { cFile: true, cParties: true, e_clients: true, e_vendors: true, cLog: true, cNotes: true };
 function collapsedState() { try { return JSON.parse(store('arcCollapsed') || 'null') || COLLAPSE_DEFAULT; } catch (e) { return COLLAPSE_DEFAULT; } }
 function applyCollapsed() { const st = collapsedState(); document.querySelectorAll('#fileView .card[id]').forEach(c => c.classList.toggle('collapsed', !!st[c.id])); }
@@ -605,6 +608,7 @@ function renderCal() {
     .concat(autoDates().map(autoRow)).sort(byDate);
   const listing = (F.custom || []).map((c, i) => [c, i]).filter(([c]) => isListingDate(c.label)).map(([c, i]) => custRow(c, i)).sort((a, b) => -byDate(a, b));
   const head = t => '<div class="small muted" style="margin:10px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + t + '</div>';
+  F.depositMethod = F.depositMethod || {};
   $('#cCal').innerHTML = '<div class="ch"><h3>Calendar</h3><span class="sub">Change any date here</span></div><div class="cb">' +
     (ua || !listing.length ? head('Contract dates') + contract.map(x => x.html).join('') : '') +
     (listing.length ? head('Listing dates') + listing.map(x => x.html).join('') : '') +
@@ -613,6 +617,9 @@ function renderCal() {
       '<label class="f">Heating fuel<select class="i" data-path="utilities.fuel"><option></option>' + opt(['None', 'Oil', 'Propane', 'Oil & propane', 'Not sure'], (F.utilities || {}).fuel) + '</select></label>' +
       '<label class="f">Water / sewer<select class="i" data-path="utilities.waterSewer"><option></option>' + opt(['Water & sewer', 'Water only', 'Sewer only', 'No — private well & septic', 'Not sure'], (F.utilities || {}).waterSewer) + '</select></label>' +
       '<label class="f">Gas meter reading<select class="i" data-path="utilities.gas"><option></option>' + opt(['Yes', 'No', 'Not sure'], (F.utilities || {}).gas) + '</select></label></div>' +
+    '<div class="row3" style="margin-top:6px;grid-template-columns:2fr 1fr">' +
+      '<label class="f">Deposit paid by<select class="i" data-path="depositMethod.method"><option></option>' + opt(DEP_METHODS, F.depositMethod.method) + '</select></label>' +
+      '<label class="f">Drop-off office<input class="i" data-path="depositMethod.office" value="' + esc(F.depositMethod.office || '') + '"></label></div>' +
     '<div class="btns" style="margin-top:10px"><button class="btn" id="addCustom">+ Add a date</button></div></div>';
   $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '' }); renderCal(); changed(); };
 }
@@ -817,6 +824,7 @@ function onEdit(e) {
     setPath(F, el.dataset.path, val);
     if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') renderTerms();
     if ((el.dataset.path.indexOf('utilities.') === 0 || el.dataset.path === 'dates.closing') && e.type === 'change') renderCal();
+    if (el.dataset.path.indexOf('depositMethod.') === 0 && e.type === 'change') renderSummary();
     changed(el.dataset.path);
   } else if (el.dataset.party !== undefined) {
     const p = F.parties[+el.dataset.party], k = el.dataset.pf;

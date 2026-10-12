@@ -669,7 +669,7 @@ function renderDocs() {
     catch (err) { $('#docMsg').textContent = ''; toast(err.message, true); }
   };
 }
-function contractSummary() {
+function summaryData() {
   const p = F.property || {}, ct = F.contractTerms || {};
   const cont = TERM_KEYS.filter(([k]) => k !== 'deposit' && F.terms[k] !== false).map(t => t[1]);
   const who = [['Buyer', F.buyers || names('Buyer')], ['Seller', F.sellers || names('Seller')],
@@ -682,6 +682,25 @@ function contractSummary() {
     .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))
     .sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0))
     .map(x => [x.l, (x.k === 'deposit' && F.depositAmount ? money(F.depositAmount) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + fmt(x.d, true)]);
+  return { who, dates };
+}
+// A plain, table-only version for the PDF attached to emails (Google's PDF maker ignores modern layout)
+function summaryPdfHtml() {
+  const { who, dates } = summaryData(), navy = '#2E3466', grey = '#5E6676', gold = '#B5964F';
+  const tr = (r, last) => '<tr><td style="padding:4px 0;border-bottom:1px solid #E3E5EA;color:' + grey + ';width:38%;vertical-align:top">' + esc(r[0]) + '</td><td style="padding:4px 0;border-bottom:1px solid #E3E5EA;vertical-align:top' + (last ? ';font-weight:bold;color:' + navy : '') + '">' + esc(r[1]) + '</td></tr>';
+  const h2 = t => '<div style="font-size:11px;letter-spacing:2px;color:' + grey + ';font-weight:bold;margin:16px 0 4px">' + t + '</div>';
+  return '<html><head><meta charset="utf-8"></head><body style="font-family:Georgia,serif;font-size:13px;color:#1C2333;margin:0">' +
+    '<table style="width:100%;height:9.2in;border-collapse:collapse"><tr><td style="vertical-align:top">' +
+    '<div style="text-align:center;color:' + navy + ';border-bottom:1px solid ' + gold + ';padding-bottom:8px;margin-bottom:12px"><div style="font-size:22px;letter-spacing:3px;font-weight:bold">ARK ROYAL</div>' +
+    '<div style="font-size:20px;color:' + gold + ';font-style:italic">Closings</div><div style="font-size:8px;letter-spacing:3px;font-weight:bold;margin-top:2px">REAL ESTATE<br>TRANSACTION COORDINATION</div></div>' +
+    '<div style="font-size:22px;color:' + navy + ';font-weight:bold">' + esc(where()) + '</div><div style="color:' + grey + '">Executed Contract Summary</div>' +
+    h2('WHO IS WHO') + '<table style="width:100%;border-collapse:collapse">' + who.map(r => tr(r)).join('') + '</table>' +
+    h2('IMPORTANT DATES') + '<table style="width:100%;border-collapse:collapse">' + (dates.length ? dates.map((r, i) => tr(r, i === dates.length - 1)).join('') : tr(['Dates to follow', ''])) + '</table>' +
+    '</td></tr><tr><td style="vertical-align:bottom;text-align:center;font-size:10px;color:' + grey + ';border-top:1px solid ' + gold + ';padding-top:6px;height:30px">' +
+    'Lynne Pinette · Ark Royal Closings · 603-343-3688 · lynne@arkroyalclosings.com<br><i>Navigating every detail from contract to close.</i></td></tr></table></body></html>';
+}
+function contractSummary() {
+  const { who, dates } = summaryData();
   const tr = r => '<tr><td>' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>';
   const html = '<!doctype html><html><head><meta charset="utf-8"><title>Executed Contract Summary · ' + esc(where()) + '</title>' +
     '<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Pinyon+Script&display=swap" rel="stylesheet">' +
@@ -803,6 +822,7 @@ function renderEmail(kind) {
             '<div class="erow"><span>Cc</span><div class="pills">' + (v.cc ? pills(v.cc) : '<span class="small faint">—</span>') + '</div></div>' +
             '<div class="erow"><span>Subject</span><div style="font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink)">' + esc(v.subject) + '</div></div>') +
       '<textarea class="i" rows="12" data-email="' + kind + '" data-ef="body">' + esc(v.body) + '</textarea>' +
+      (F.contractFileId ? '<label class="small" style="display:flex;gap:8px;align-items:center"><input type="checkbox" data-eattach="' + kind + '"' + (E[kind].attach !== false ? ' checked' : '') + '> Attach Executed Contract Summary (PDF) <span class="faint">· added when you Save as draft</span></label>' : '') +
       '<div class="small faint"><a href="#" data-erec="' + kind + '">' + (ed ? 'Done editing recipients' : 'Edit recipients &amp; subject') + '</a> · ' + (E[kind].touched ? 'Edited by you · <a href="#" data-ereset="' + kind + '">reset to the file\'s details</a>' : 'Updates automatically as you change the file.') + '</div>' +
     '</div>';
 }
@@ -862,6 +882,8 @@ function onEdit(e) {
     const t = F.todos[+el.dataset.todo]; t.done = el.checked; t.at = el.checked ? new Date().toISOString() : ''; renderTodo(); changed();
   } else if (el.dataset.gap && e.type === 'change') {
     F.gapDone = F.gapDone || {}; F.gapDone[el.dataset.gap] = el.checked; renderTodo(); changed();
+  } else if (el.dataset.eattach) {
+    E[el.dataset.eattach].attach = el.checked;
   } else if (el.dataset.email) {
     E[el.dataset.email].v[el.dataset.ef] = el.value;
     if (!E[el.dataset.email].touched) { E[el.dataset.email].touched = true; }
@@ -887,7 +909,9 @@ fv.addEventListener('click', async e => {
     t.disabled = true; t.innerHTML = '<span class="spin"></span>';
     try {
       await flush();
-      const r = await call('draft', { id: F.id, kind, to: v.to, cc: v.cc, subject: v.subject, body: v.body });
+      const att = F.contractFileId && E[kind].attach !== false;
+      const r = await call('draft', Object.assign({ id: F.id, kind, to: v.to, cc: v.cc, subject: v.subject, body: v.body },
+        att ? { summaryHtml: summaryPdfHtml(), summaryName: 'Executed Contract Summary - ' + ((F.property || {}).address || F.id) + '.pdf' } : {}));
       F.emails = r.file.emails; F.checklist = r.file.checklist; renderLog(); renderCheck();
       toast(S.settings.testMode ? 'Test draft saved to your Gmail Drafts' : 'Draft saved — review it in Gmail Drafts and send');
     } catch (err) { toast(err.message, true); }

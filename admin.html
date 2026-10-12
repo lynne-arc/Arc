@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p47';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p48';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -483,6 +483,7 @@ function renderFile() {
         '<section class="card t-green" id="cDocs"></section>' +
         '<section class="card email agents" id="e_agents"></section>' +
         '<section class="card email clients" id="e_clients"></section>' +
+        '<section class="card email clients" id="e_clientsSell" hidden></section>' +
         '<section class="card email closing" id="e_title"></section>' +
         '<section class="card email lender" id="e_lender"></section>' +
         '<section class="card t-grey" id="cLog"></section>' +
@@ -495,7 +496,7 @@ function renderFile() {
     '</div>';
   applyCollapsed();
   renderPending(); renderSummary(); renderAgent(); renderFileInfo(); renderTerms(); renderCal(); renderParties(); renderDocs();
-  ['agents', 'clients', 'title', 'lender'].forEach(renderEmail); renderLog(); renderTodo(); renderCheck(); renderNotes();
+  ['agents', 'clients', 'clientsSell', 'title', 'lender'].forEach(renderEmail); renderLog(); renderTodo(); renderCheck(); renderNotes();
 }
 
 function renderPending() {
@@ -620,7 +621,7 @@ function metState(k, date) { if (!date || date >= today()) return 'upcoming'; co
 const DEP_METHODS = ['DepositLink — Lynne to send the request', 'Earnnest — Lynne to send the request', 'Wire', 'Personal check — mailed to Verani', 'Personal check — dropped off at a Verani office', 'Held by the other brokerage or an attorney', 'Not sure yet'];
 function depShort() { const d = F.depositMethod || {}, m = d.method || ''; if (!m) return '';
   return m.replace(/ — Lynne to send the request/, '').replace(/Personal check — mailed to Verani/, 'Check, mailed to Verani').replace(/Personal check — dropped off at a Verani office/, 'Check, drop-off' + (d.office ? ' ' + d.office : '')).replace(/Held by the other brokerage or an attorney/, 'Held elsewhere'); }
-const COLLAPSE_DEFAULT = { cFile: true, cParties: true, e_clients: true, e_title: true, e_lender: true, cLog: true, cNotes: true };
+const COLLAPSE_DEFAULT = { cFile: true, cParties: true, e_clients: true, e_clientsSell: true, e_title: true, e_lender: true, cLog: true, cNotes: true };
 function collapsedState() { try { return JSON.parse(store('arcCollapsed') || 'null') || COLLAPSE_DEFAULT; } catch (e) { return COLLAPSE_DEFAULT; } }
 function applyCollapsed() { const st = collapsedState(); document.querySelectorAll('#fileView .card[id]').forEach(c => c.classList.toggle('collapsed', !!st[c.id])); }
 document.addEventListener('click', e => {
@@ -928,6 +929,7 @@ function feeBlock(aud) { const r = feeRows(aud); return r.length ? '\n\nFees\n' 
 function feeRows(aud) { const n = feeNotes(), keys = FEE_AUDIENCE[aud || 'all'] || ['base'];
   return [['Co-broke fee', keys.indexOf('base') > -1 ? n.base : ''], ['Buyer\'s share', keys.indexOf('buyer') > -1 ? n.buyer : ''], ['Listing fee', keys.indexOf('listing') > -1 ? n.listing : '']].filter(r => r[1]); }
 // which fee notes the clients email may carry
+function isDual() { return clientRoles().length === 2; }
 function clientAudience() { return F.rep === 'Buyer side' ? 'buyerClient' : F.rep === 'Seller side' ? 'sellerClient' : (clientRoles().length === 1 ? (clientRoles()[0] === 'Buyer' ? 'buyerClient' : 'sellerClient') : 'all'); }
 function summaryData(aud) {
   const p = F.property || {};
@@ -1029,8 +1031,10 @@ function buildEmail(kind) {
         'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
         '\n\nThe executed contract is on file with me. Please copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
   }
-  if (kind === 'clients') {
-    const roles = clientRoles(), to = partiesByRoles(roles), buyerSide = roles.indexOf('Buyer') > -1 && roles.length === 1;
+  if (kind === 'clients' || kind === 'clientsSell') {
+    // on a both-sides file buyers and sellers get separate emails, so neither sees the other's fee arrangements
+    const roles = kind === 'clientsSell' ? ['Seller'] : (isDual() ? ['Buyer'] : clientRoles()), to = partiesByRoles(roles), buyerSide = roles.indexOf('Buyer') > -1 && roles.length === 1;
+    const aud = roles.length === 1 ? (roles[0] === 'Buyer' ? 'buyerClient' : 'sellerClient') : 'all';
     const sellerSide = roles.indexOf('Seller') > -1 && roles.length === 1;
     const greet = joinNames(to.map(p => first(p.name))) || 'there';
     const steps = [];
@@ -1049,7 +1053,7 @@ function buildEmail(kind) {
     }
     return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you are under agreement, here is what happens next',
       body: 'Hi ' + greet + ',\n\nCongratulations — ' + where() + ' is officially under agreement! My name is Lynne, and I am the transaction coordinator working with ' + (joinNames(ours.map(p => first(p.name))) || 'your agent') + ' to keep everything on track to closing.\n\n' +
-        'Important dates\n' + datesBlock() + feeBlock(clientAudience()) + '\n\n' +
+        'Important dates\n' + datesBlock() + feeBlock(aud) + '\n\n' +
         (steps.length ? 'What happens next\n' + steps.sort((a, b) => dateOrder(F.dates[a[0]], F.dates[b[0]], a[0], b[0])).map((s, i) => (i + 1) + '. ' + s[1]).join('\n') + '\n\n' : '') +
         'IMPORTANT — wire fraud: I will never send or change wiring instructions by email. Before you send any money, always call your closing attorney or title company at a phone number you already know.\n\n' +
         'Please add these dates to your calendar, and reply with any questions — no question is too small.' + SIGNATURE };
@@ -1072,6 +1076,7 @@ function buildEmail(kind) {
 const EMAIL_META = {
   agents: ['Email · Agents', 'To the agents on the deal'],
   clients: ['Email · Clients', 'You are under agreement — here is what happens next'],
+  clientsSell: ['Email · Sellers', 'You are under agreement — here is what happens next'],
   title: ['Email · Title / attorney', 'To the closing agent'],
   lender: ['Email · Lender', 'To the lender'],
 };
@@ -1087,9 +1092,10 @@ function renderEmail(kind) {
   if (!E[kind].touched) E[kind].v = buildEmail(kind);
   const v = E[kind].v, ed = E[kind].editRec;
   const el = $('#e_' + kind);
+  if (kind === 'clientsSell') { el.hidden = !isDual(); if (el.hidden) return; }
   if (kind === 'lender') { el.hidden = F.terms.financing === false && !partiesByRoles(['Lender']).length; if (el.hidden) return; }   // cash deal: no lender email
   const last = (F.emails || []).find(m => m.kind === kind);   // newest first
-  $('#e_' + kind).innerHTML = '<div class="ch"><div><h3>' + EMAIL_META[kind][0] + '</h3><div style="font:700 17px var(--serif);margin-top:2px">' + esc(EMAIL_META[kind][1]) + '</div></div>' +
+  $('#e_' + kind).innerHTML = '<div class="ch"><div><h3>' + (kind === 'clients' && isDual() ? 'Email · Buyers' : EMAIL_META[kind][0]) + '</h3><div style="font:700 17px var(--serif);margin-top:2px">' + esc(EMAIL_META[kind][1]) + '</div></div>' +
     (last ? '<span class="sub">✓ Drafted ' + esc(new Date(last.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })) + '</span>' : '') + '</div>' +
     '<div class="cb stack">' +
       '<div class="btns" style="justify-content:flex-end"><button class="btn" data-ecopy="' + kind + '">Copy</button><button class="btn" data-egmail="' + kind + '">Open in Gmail</button><button class="btn primary" data-edraft="' + kind + '">Save as draft</button></div>' +
@@ -1208,7 +1214,7 @@ fv.addEventListener('click', async e => {
       await flush();
       const att = F.contractFileId && E[kind].attach !== false;
       const r = await call('draft', Object.assign({ id: F.id, kind, to: v.to, cc: v.cc, subject: v.subject, body: v.body },
-        att ? { summaryHtml: summaryPdfHtml({ agents: 'agents', clients: clientAudience(), title: 'title', lender: 'lender' }[kind] || 'all'), summaryName: 'Executed Contract Summary - ' + ((F.property || {}).address || F.id) + '.pdf' } : {}));
+        att ? { summaryHtml: summaryPdfHtml({ agents: 'agents', clients: isDual() ? 'buyerClient' : clientAudience(), clientsSell: 'sellerClient', title: 'title', lender: 'lender' }[kind] || 'all'), summaryName: 'Executed Contract Summary - ' + ((F.property || {}).address || F.id) + '.pdf' } : {}));
       F.emails = r.file.emails; F.checklist = r.file.checklist; renderLog(); renderCheck(); renderEmail(kind);
       toast(S.settings.testMode ? 'Test draft saved to your Gmail Drafts' : 'Draft saved — review it in Gmail Drafts and send');
     } catch (err) { toast(err.message, true); }
@@ -1238,7 +1244,7 @@ function changed(path) {
   $('#saveState').textContent = 'Unsaved…';
   renderSummary(); renderPending();
   if (!path || path.indexOf('dates.') === 0) DATE_KEYS.forEach(([k]) => { const c = document.querySelector('[data-chip="' + k + '"]'); if (c) c.innerHTML = F.dates[k] && k !== 'effective' ? when(F.dates[k]) : ''; });
-  ['agents', 'clients', 'title', 'lender'].forEach(k => { if (!E[k] || !E[k].touched) renderEmail(k); });
+  ['agents', 'clients', 'clientsSell', 'title', 'lender'].forEach(k => { if (!E[k] || !E[k].touched) renderEmail(k); });
   clearTimeout(saveTimer); saveTimer = setTimeout(save, 900);
 }
 async function save() {

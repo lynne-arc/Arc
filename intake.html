@@ -212,7 +212,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <div class="drop" id="drop" tabindex="0" role="button" aria-label="Add a document">
       <b id="dropTitle">Add the executed P&amp;S</b>
       <div class="hint" id="dropMsg" style="margin:4px 0 0">Drop the PDF here or tap to choose · up to 15 MB</div>
-      <input type="file" id="pns" accept="application/pdf,image/*" hidden>
+      <input type="file" id="pns" accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx" multiple hidden>
     </div>
   </section>
 
@@ -241,7 +241,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
 const API = window.ARC_API_URL;   // set once in config.js
 
 const form = document.getElementById('f');
-let contract = null;
+let contract = null, extras = [];
 
 async function call(action, payload) {
   const res = await fetch(API, { method: 'POST', body: JSON.stringify(Object.assign({ action }, payload)) });
@@ -300,7 +300,8 @@ function showSections() {
   });
   let n = 0;
   form.querySelectorAll('section.card').forEach(s => { if (!s.hidden) { n++; const h = s.querySelector('h2'); h.textContent = h.textContent.replace(/^\d+/, n); } });
-  document.getElementById('dropTitle').textContent = listing ? 'Add the signed listing agreement' : 'Add the executed P&S';
+  document.getElementById('dropTitle').textContent = listing ? 'Add any documents (optional)' : 'Add the executed P&S';
+  document.getElementById('dropMsg').textContent = listing ? (extras.length ? '✓ ' + extras.map(x => x.name).join(', ') : 'Disclosures, tax card, plans, photos… drop them here or tap to choose · up to 25 MB in total') : (contract ? '✓ ' + contract.name + ' attached' : 'Drop the PDF here or tap to choose · up to 15 MB');
 }
 form.addEventListener('change', showSections);
 showSections();
@@ -311,8 +312,16 @@ drop.addEventListener('click', () => pns.click());
 drop.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pns.click(); } });
 drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('on'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('on'));
-drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('on'); if (e.dataTransfer.files[0]) takeFile(e.dataTransfer.files[0]); });
-pns.addEventListener('change', () => { if (pns.files[0]) takeFile(pns.files[0]); });
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('on'); takeFiles(e.dataTransfer.files); });
+pns.addEventListener('change', () => { takeFiles(pns.files); pns.value = ''; });
+// Listing: any number of documents, filed as agent uploads. Under agreement: the executed P&S.
+function takeFiles(list) {
+  list = Array.from(list || []); if (!list.length) return;
+  if (!/Listing/.test(form.service.value)) return takeFile(list[0]);
+  const total = extras.reduce((a, x) => a + x.size, 0) + list.reduce((a, f) => a + f.size, 0);
+  if (total > 25 * 1048576) { dropMsg.textContent = 'That is over 25 MB in total — please email the larger files to file@arkroyalclosings.com.'; return; }
+  list.forEach(file => { const r = new FileReader(); r.onload = () => { extras.push({ name: file.name, mime: file.type || 'application/octet-stream', b64: String(r.result).split(',')[1], size: file.size }); dropMsg.textContent = '✓ ' + extras.map(x => x.name).join(', '); }; r.readAsDataURL(file); });
+}
 function takeFile(file) {
   if (file.size > 15 * 1048576) { dropMsg.textContent = 'That file is over 15 MB — please email it to file@arkroyalclosings.com instead.'; return; }
   const r = new FileReader();
@@ -333,9 +342,9 @@ form.addEventListener('submit', async e => {
   const btn = document.getElementById('go'); btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span>' + (contract ? 'Sending your document…' : 'Sending…');
   try {
-    const r = await call('intake', { form: data, contract });
+    const r = await call('intake', { form: data, contract: /Listing/.test(data.service) ? null : contract, extras: /Listing/.test(data.service) ? extras.map(x => ({ name: x.name, mime: x.mime, b64: x.b64 })) : [] });
     form.hidden = true;
-    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (r.existing ? ' — the P&S has been added to your listing file.' : '') + (contract ? ' Your document is already with me.' : (/Listing/.test(data.service) ? '. Please email the signed listing agreement to file@arkroyalclosings.com.' : '. Please email the executed P&S to file@arkroyalclosings.com when you have it.'));
+    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (r.existing ? ' — the P&S has been added to your listing file.' : '') + (contract ? ' Your document is already with me.' : (/Listing/.test(data.service) ? (extras.length ? ' — your documents are filed.' : '.') : '. Please email the executed P&S to file@arkroyalclosings.com when you have it.'));
     document.getElementById('done').hidden = false; window.scrollTo(0, 0);
   } catch (x) {
     err.textContent = 'Sorry — that didn\'t go through (' + x.message + '). Please try again, or email lynne@arkroyalclosings.com.';

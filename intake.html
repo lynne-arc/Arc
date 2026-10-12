@@ -82,8 +82,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
       <input type="hidden" name="existingId" value="">
       <label class="c4">Who do you represent? <span class="req">*</span>
         <select name="rep" required><option value="">Choose…</option><option>Buyer side</option><option>Seller side</option><option>Both sides</option><option>Transaction Facilitator</option></select></label>
-      <label class="c4">Your client is the <span class="req">*</span>
-        <select name="clientSide" required><option value="">Choose…</option><option>Buyer</option><option>Seller</option></select></label>
+      <label class="c4" data-show="rep:Facilitator">Your client is the <span class="req">*</span>
+        <select name="clientSide" required><option value="">Choose…</option><option>Buyer</option><option>Seller</option><option>Both</option></select></label>
       <label class="c4" data-once>Transaction platform <span class="req">*</span>
         <select name="platform" required><option value="">Choose…</option><option>Dotloop</option><option>SkySlope</option><option>Lone Wolf / Transact</option><option>Other</option></select></label>
       <label class="c12" data-loop>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
@@ -113,6 +113,13 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
       <label class="c4">Client 2 — full name<input name="c2Name"></label>
       <label class="c4">Client 2 — email<input name="c2Email" type="email"></label>
       <label class="c4">Client 2 — mobile<input name="c2Phone" type="tel"></label>
+      <p class="hint full" data-show="clientSide:Both" style="margin:6px 0 0">You're on both sides: clients 1 and 2 above are your <b>buyers</b>. Add your <b>sellers</b> here.</p>
+      <label class="c4" data-show="clientSide:Both">Seller 1 — full name <span class="req">*</span><input name="s1Name" required></label>
+      <label class="c4" data-show="clientSide:Both">Seller 1 — email<input name="s1Email" type="email"></label>
+      <label class="c4" data-show="clientSide:Both">Seller 1 — mobile<input name="s1Phone" type="tel"></label>
+      <label class="c4" data-show="clientSide:Both">Seller 2 — full name<input name="s2Name"></label>
+      <label class="c4" data-show="clientSide:Both">Seller 2 — email<input name="s2Email" type="email"></label>
+      <label class="c4" data-show="clientSide:Both">Seller 2 — mobile<input name="s2Phone" type="tel"></label>
     </div>
   </section>
 
@@ -159,10 +166,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <h2>5 · The other side &amp; closing team</h2>
     <p class="hint">Fill in what you have — leave the rest blank.</p>
     <div class="grid">
-      <label class="c3">Other agent — name<input name="coName"></label>
-      <label class="c3">Other agent — brokerage<input name="coBrok"></label>
-      <label class="c3">Other agent — email<input name="coEmail" type="email"></label>
-      <label class="c3">Other agent — mobile<input name="coPhone" type="tel"></label>
+      <label class="c3" data-show="clientSide:^(?!Both)">Other agent — name<input name="coName"></label>
+      <label class="c3" data-show="clientSide:^(?!Both)">Other agent — brokerage<input name="coBrok"></label>
+      <label class="c3" data-show="clientSide:^(?!Both)">Other agent — email<input name="coEmail" type="email"></label>
+      <label class="c3" data-show="clientSide:^(?!Both)">Other agent — mobile<input name="coPhone" type="tel"></label>
       <label class="c3">Lender — loan officer<input name="lenName"></label>
       <label class="c3">Lender — company<input name="lenCo"></label>
       <label class="c3">Lender — email<input name="lenEmail" type="email"></label>
@@ -198,14 +205,14 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
         <select name="depMethod" required><option value="">Choose…</option><option>DepositLink — Lynne to send the request</option><option>Earnnest — Lynne to send the request</option><option>Wire</option><option>Personal check — mailed to Verani</option><option>Personal check — dropped off at a Verani office</option><option>Held by the other brokerage or an attorney</option><option>Not sure yet</option></select></label>
       <label class="c6" data-show="depMethod:dropped off">Which office? <span class="req">*</span><input name="depOffice" list="offices" placeholder="e.g. Portsmouth" required>
         <datalist id="offices"><option>Exeter</option><option>Portsmouth</option><option>Newburyport</option><option>Andover</option><option>Haverhill</option><option>Methuen</option><option>Biddeford / Saco</option><option>Kennebunk</option></datalist></label>
-      <label class="c6" data-show="clientSide:Buyer">Buyer agency agreement fee <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Buyer|Both">Buyer agency agreement fee <span class="req">*</span>
         <div class="fee"><input name="buaAmt" inputmode="decimal" placeholder="e.g. 3" required><select name="buaUnit"><option>%</option><option>$</option></select></div>
         <span class="hint" style="margin:4px 0 0;font-weight:400">From your buyer agreement — I'll check it against what the seller is paying in the P&amp;S.</span></label>
-      <label class="c6" data-show="clientSide:Buyer">If the seller pays less than your agreement fee, will you waive the difference? <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Buyer|Both">If the seller pays less than your agreement fee, will you waive the difference? <span class="req">*</span>
         <select name="waive" required><option value="">Choose…</option><option>No — buyer pays the difference</option><option>Yes — waiving the difference</option><option>Partly — see note</option><option>Not applicable — seller covers it all</option></select></label>
-      <label class="c6" data-show="clientSide:Seller">Buyer agent compensation in your listing agreement <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Seller|Both">Buyer agent compensation in your listing agreement <span class="req">*</span>
         <div class="fee"><input name="lbaAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="lbaUnit"><option>%</option><option>$</option></select></div></label>
-      <label class="c6" data-show="clientSide:Seller">If the buyer's agent asked for more than that in the Listing Agreement, who covers the difference? <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Seller|Both">If the buyer's agent asked for more than that in the Listing Agreement, who covers the difference? <span class="req">*</span>
         <select name="cover" required><option value="">Choose…</option><option>Not applicable — same or less</option><option>Listing firm is reducing its fee to cover it</option><option>Seller agreed to pay more — listing fee unchanged</option><option>Not sure yet</option></select></label>
       <label class="c6" data-show="waive:Partly">Amount you're waiving<div class="fee"><input name="waiveAmt" inputmode="decimal"><select name="waiveUnit"><option>%</option><option>$</option></select></div></label>
     </div>
@@ -217,6 +224,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
       <b id="dropTitle">Add the executed P&amp;S</b>
       <div class="hint" id="dropMsg" style="margin:4px 0 0">Drop the PDF here or tap to choose · up to 15 MB</div>
       <input type="file" id="pns" accept="application/pdf,image/*,.doc,.docx,.xls,.xlsx" multiple hidden>
+    </div>
+    <div class="grid" id="agreements" style="margin-top:14px">
+      <label class="c6" id="agListingBox">Your signed listing agreement <span class="req">*</span><input type="file" id="agListing" accept="application/pdf,image/*,.doc,.docx"></label>
+      <label class="c6" id="agBuyerBox">Your signed buyer agency agreement <span class="req">*</span><input type="file" id="agBuyer" accept="application/pdf,image/*,.doc,.docx"></label>
     </div>
   </section>
 
@@ -310,6 +321,8 @@ form.agentEmail.addEventListener('change', lookupAgent);
 form.rep.addEventListener('change', () => {
   if (form.rep.value === 'Buyer side') form.clientSide.value = 'Buyer';
   else if (form.rep.value === 'Seller side') form.clientSide.value = 'Seller';
+  else if (form.rep.value === 'Both sides') form.clientSide.value = 'Both';
+  else if (form.clientSide.value === 'Both') form.clientSide.value = '';
   showSections();
 });
 form.service.addEventListener('change', () => {
@@ -332,6 +345,10 @@ function showSections() {
     const [name, want] = el.dataset.show.split(':');
     el.hidden = !(form[name].value && new RegExp(want).test(form[name].value));
   });
+  // New under-agreement file: I need the agent's own agreement(s). Not for a listing ARC already has.
+  const ua = !listing && !existing, cs = form.clientSide.value;
+  document.getElementById('agListingBox').hidden = !(ua && /Seller|Both/.test(cs) && form.rep.value !== 'Transaction Facilitator');
+  document.getElementById('agBuyerBox').hidden = !(ua && /Buyer|Both/.test(cs) && form.rep.value !== 'Transaction Facilitator');
   let n = 0;
   form.querySelectorAll('section.card').forEach(s => { if (!s.hidden) { n++; const h = s.querySelector('h2'); h.textContent = h.textContent.replace(/^\d+/, n); } });
   document.getElementById('dropTitle').textContent = listing ? 'Add any documents (optional)' : 'Add the executed P&S';
@@ -370,14 +387,21 @@ form.addEventListener('submit', async e => {
   const err = document.getElementById('err'); err.hidden = true;
   const bad = Array.from(form.querySelectorAll('[required]')).filter(el => !el.closest('[hidden]')).filter(el => !el.value.trim() || (el.type === 'email' && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(el.value.trim())));
   if (bad.length) { err.textContent = 'Please complete the highlighted fields.'; err.hidden = false; bad.forEach(el => el.style.borderColor = '#8B3A3A'); bad[0].focus(); return; }
-  const data = {}; new FormData(form).forEach((v, k) => data[k] = String(v).trim());
+  const agreeIn = [['listing', 'agListing', 'listing agreement'], ['buyer', 'agBuyer', 'buyer agency agreement']].filter(([, id]) => !document.getElementById(id + 'Box').hidden);
+  const missing = agreeIn.filter(([, id]) => !document.getElementById(id).files.length);
+  if (missing.length) { err.textContent = 'Please add your signed ' + missing.map(m => m[2]).join(' and ') + '.'; err.hidden = false; document.getElementById(missing[0][1]).focus(); return; }
+  const readFile = file => new Promise((ok, no) => { if (file.size > 15 * 1048576) return no(new Error(file.name + ' is over 15 MB')); const r = new FileReader(); r.onload = () => ok({ name: file.name, mime: file.type || 'application/pdf', b64: String(r.result).split(',')[1] }); r.onerror = () => no(new Error('Could not read ' + file.name)); r.readAsDataURL(file); });
+  let agreements = [];
+  try { agreements = await Promise.all(agreeIn.map(async ([kind, id]) => Object.assign({ kind }, await readFile(document.getElementById(id).files[0])))); }
+  catch (x) { err.textContent = x.message; err.hidden = false; return; }
+  const data = {}; new FormData(form).forEach((v, k) => { if (typeof v === 'string') data[k] = v.trim(); });
   // only send the fields for the sections the agent could see
   form.querySelectorAll('[hidden] [name]').forEach(el => { delete data[el.name]; });
   form.querySelectorAll('[name][hidden]').forEach(el => { delete data[el.name]; });
   const btn = document.getElementById('go'); btn.disabled = true;
   btn.innerHTML = '<span class="spin"></span>' + (contract ? 'Sending your document…' : 'Sending…');
   try {
-    const r = await call(PORTAL ? 'agentIntake' : 'intake', { token: TOKEN, form: data, contract: /Listing/.test(data.service) ? null : contract, extras: /Listing/.test(data.service) ? extras.map(x => ({ name: x.name, mime: x.mime, b64: x.b64 })) : [] });
+    const r = await call(PORTAL ? 'agentIntake' : 'intake', { token: TOKEN, form: data, contract: /Listing/.test(data.service) ? null : contract, agreements, extras: /Listing/.test(data.service) ? extras.map(x => ({ name: x.name, mime: x.mime, b64: x.b64 })) : [] });
     form.hidden = true;
     document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (r.existing ? ' — the P&S has been added to your listing file.' : '') + (contract ? ' Your document is already with me.' : (/Listing/.test(data.service) ? (extras.length ? ' — your documents are filed.' : '.') : '. Please email the executed P&S to file@arkroyalclosings.com when you have it.'));
     document.getElementById('done').hidden = false; window.scrollTo(0, 0);

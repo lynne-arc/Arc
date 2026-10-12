@@ -468,8 +468,8 @@ function renderSummary() {
     '<div class="sumlines">' +
       line('Buyer', F.buyers || names('Buyer')) + line('Seller', F.sellers || names('Seller')) +
       line('Listing agent', agentLine('Listing agent')) + line('Buyer\'s agent', agentLine('Buyer agent')) +
-      line('Co-broke fee', ct.buyerFeeText) + line('Price', p.price ? money(p.price) : '') +
-      'Contingencies: <b>' + esc(cont.join(', ') || 'None') + '</b>' +
+      line('Co-broke fee', feeShort()) + line('Price', p.price ? money(p.price) : '') +
+      'Contingencies: <b>' + esc(cont.concat(ct.otherContingencies || []).join(', ') || 'None') + '</b>' +
     '</div>' +
     (contract ? '<div class="cfile"><div><div class="n">' + esc(contract.name) + '</div><div class="m">' + esc(F.status) + (F.updated ? ' · updated ' + esc(new Date(F.updated).toLocaleDateString('en-US', {month:'short', day:'numeric'})) : '') + '</div></div>' +
       '<div class="btns"><button class="btn" data-view="' + esc(contract.id) + '">View contract</button><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
@@ -542,6 +542,20 @@ function fld(label, path, type, extra) {
   const v = getPath(F, path); return '<label class="f">' + esc(label) + '<input class="i" data-path="' + path + '" type="' + (type || 'text') + '" value="' + esc(v == null ? '' : v) + '"' + (extra || '') + '></label>';
 }
 /* Fee checks: buyer agreement vs seller-paid, and listing agreement vs what the buyer agent asked for */
+// Short fee line, e.g. "Gross · Seller 2% · Buyer 0.5% (buyer waived)"
+function feeShort() {
+  const ct = F.contractTerms || {}, s = ct.buyerFee, txt = ct.buyerFeeText || '';
+  if (!s || s.amount == null || s.amount === '') return txt;
+  const show = (u, v) => u === '$' ? money(v) : String(v).replace(/%$/, '') + '%';
+  const basis = /\bnet\b/i.test(txt) ? 'Net' : /gross|sales? price|purchase price/i.test(txt) ? 'Gross' : '';
+  const parts = [basis, 'Seller ' + show(s.unit, s.amount)].filter(Boolean);
+  const diff = a => (!a || a.unit !== s.unit) ? 0 : Math.round((parseFloat(a.amount) - parseFloat(s.amount)) * 100) / 100;
+  const a = F.buyerAgreementFee, ga = diff(a);
+  if (ga > 0) { const w = a.waive || ''; parts.push('Buyer ' + show(s.unit, ga) + (/^Yes/.test(w) ? ' (buyer waived)' : /^Partly/.test(w) ? ' (partly waived)' : /^No/.test(w) ? ' (buyer pays)' : ' (who pays?)')); }
+  const l = F.listingBuyerFee, gl = diff(l);
+  if (gl < 0) { const c = l.cover || ''; parts.push(/reducing/.test(c) ? 'Listing firm ' + show(s.unit, -gl) : /Seller agreed/.test(c) ? '(seller agreed to ' + show(s.unit, s.amount) + ')' : '(' + show(s.unit, -gl) + ' over listing: who pays?)'); }
+  return parts.join(' · ');
+}
 function feeGaps(terms) {
   const s = (terms || F.contractTerms || {}).buyerFee, out = [];
   if (!s) return out;
@@ -706,7 +720,7 @@ function summaryData() {
     ['Listing agent', people('Listing agent').map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ')],
     ['Buyer\'s agent', people('Buyer agent').map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ')],
     ['Title / attorney', names('Title / attorney')], ['Lender', names('Lender')],
-    ['Price', p.price ? money(p.price) : ''], ['Co-broke fee', ct.buyerFeeText], ['Contingencies', cont.join(', ') || 'None']].filter(r => r[1]);
+    ['Price', p.price ? money(p.price) : ''], ['Co-broke fee', ct.buyerFeeText], ['Contingencies', cont.concat(ct.otherContingencies || []).join(', ') || 'None']].filter(r => r[1]);
   // Contract dates only (no listing dates, no ARC's own reminders), in date order, closing always last
   const dates = DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, l, d: F.dates[k] }))
     .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))

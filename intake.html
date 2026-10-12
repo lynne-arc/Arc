@@ -12,7 +12,7 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans)}
 header{background:var(--navy);color:#fff;padding:36px 16px 30px}
-.wrap{max-width:760px;margin:0 auto}
+.wrap{max-width:960px;margin:0 auto}
 header small{font-size:11px;letter-spacing:.18em;color:var(--gold);font-weight:600}
 header h1{font:700 36px/1.15 var(--serif);margin:8px 0 6px}
 header p{color:#C9D0DC;margin:0;max-width:560px}
@@ -20,11 +20,12 @@ main{padding:22px 16px 60px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(30,40,80,.04)}
 h2{font:700 22px var(--serif);margin:0 0 4px}
 .hint{color:var(--soft);font-size:13px;margin:0 0 14px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.full{grid-column:1/-1}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px 12px;align-items:end}.grid>*{grid-column:span 6}.grid>.c2{grid-column:span 2}.grid>.c3{grid-column:span 3}.grid>.c4{grid-column:span 4}.grid>.c6{grid-column:span 6}.grid>.c12{grid-column:span 12}
+.grid>.full,.full{grid-column:1/-1}
 .fee{display:flex;gap:6px}.fee input{flex:1;min-width:0}.fee select{width:72px;flex:none}
 [hidden]{display:none!important}
-@media(max-width:620px){.grid{grid-template-columns:1fr}}
+@media(max-width:820px){.grid>.c2,.grid>.c3,.grid>.c4{grid-column:span 6}}
+@media(max-width:560px){.grid>*,.grid>.c4,.grid>.c6,.grid>.c3:has(input[type=email]){grid-column:1/-1}.grid>.c2,.grid>.c3{grid-column:span 6}}
 label{display:block;font-size:13px;font-weight:500;color:var(--soft)}
 label>input,label>select,label>textarea,label>.fee,label>.hint{display:block;margin-top:5px}
 label>.fee{display:flex}
@@ -62,10 +63,10 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <h2>1 · You</h2>
     <p class="hint">Start with your email — if you've worked with me before, I'll fill in the rest.</p>
     <div class="grid">
-      <label class="full">Your email <span class="req">*</span><input name="agentEmail" type="email" required autocomplete="email"></label>
-      <label>Your name <span class="req">*</span><input name="agentName" required autocomplete="name"></label>
-      <label>Your mobile <span class="req">*</span><input name="agentPhone" type="tel" required autocomplete="tel"></label>
-      <label class="full">Brokerage <span class="req">*</span><input name="brokerage" required></label>
+      <label class="c3">Your email <span class="req">*</span><input name="agentEmail" type="email" required autocomplete="email"></label>
+      <label class="c3">Your name <span class="req">*</span><input name="agentName" required autocomplete="name"></label>
+      <label class="c3">Your mobile <span class="req">*</span><input name="agentPhone" type="tel" required autocomplete="tel"></label>
+      <label class="c3">Brokerage <span class="req">*</span><input name="brokerage" required></label>
     </div>
     <div class="welcome" id="welcome" hidden></div>
   </section>
@@ -73,19 +74,19 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
   <section class="card">
     <h2>2 · What you need</h2>
     <div class="grid">
-      <label class="full">What do you need from ARC? <span class="req">*</span>
+      <label class="c12">What do you need from ARC? <span class="req">*</span>
         <select name="service" required><option value="">Choose…</option>
           <option>Under Agreement – Contract to Close</option>
           <option>Listing – Full Listing Setup</option>
           <option>Listing – Compliance / Paperwork Only</option></select></label>
       <input type="hidden" name="existingId" value="">
-      <label>Who do you represent? <span class="req">*</span>
+      <label class="c4">Who do you represent? <span class="req">*</span>
         <select name="rep" required><option value="">Choose…</option><option>Buyer side</option><option>Seller side</option><option>Both sides</option><option>Transaction Facilitator</option></select></label>
-      <label>Your client is the <span class="req">*</span>
+      <label class="c4">Your client is the <span class="req">*</span>
         <select name="clientSide" required><option value="">Choose…</option><option>Buyer</option><option>Seller</option></select></label>
-      <label data-once>Transaction platform <span class="req">*</span>
+      <label class="c4" data-once>Transaction platform <span class="req">*</span>
         <select name="platform" required><option value="">Choose…</option><option>Dotloop</option><option>SkySlope</option><option>Lone Wolf / Transact</option><option>Other</option></select></label>
-      <label data-loop>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
+      <label class="c12" data-loop>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
         <select name="onLoop" required><option value="">Choose…</option><option>Yes</option><option>Not yet</option></select></label>
     </div>
   </section>
@@ -93,25 +94,25 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
   <section class="card" data-skip-existing>
     <h2>3 · The property</h2>
     <div class="grid">
-      <label class="full">Street address <span class="req">*</span><input name="address" required></label>
-      <label>Town <span class="req">*</span><input name="town" required></label>
-      <label>State <span class="req">*</span><select name="state" required><option value="">Choose…</option><option>NH</option><option>ME</option><option>MA</option></select></label>
-      <label>MLS # (if known)<input name="mls"></label>
-      <label>List or sale price<input name="price" inputmode="numeric"></label>
-      <label>Property type<select name="propType"><option></option><option>Single family</option><option>Condo</option><option>Multi-family</option><option>Mobile home</option><option>Land</option><option>Other</option></select></label>
-      <label>Condo / HOA?<select name="hoa"><option></option><option>Yes</option><option>No</option></select></label>
+      <label class="c6">Street address <span class="req">*</span><input name="address" required></label>
+      <label class="c4">Town <span class="req">*</span><input name="town" required></label>
+      <label class="c2">State <span class="req">*</span><select name="state" required><option value="">Choose…</option><option>NH</option><option>ME</option><option>MA</option></select></label>
+      <label class="c3">MLS # (if known)<input name="mls"></label>
+      <label class="c3">List or sale price<input name="price" inputmode="numeric"></label>
+      <label class="c3">Property type<select name="propType"><option></option><option>Single family</option><option>Condo</option><option>Multi-family</option><option>Mobile home</option><option>Land</option><option>Other</option></select></label>
+      <label class="c3">Condo / HOA?<select name="hoa"><option></option><option>Yes</option><option>No</option></select></label>
     </div>
   </section>
 
   <section class="card" data-skip-existing>
     <h2>4 · Your client(s)</h2>
     <div class="grid">
-      <label>Client 1 — full name <span class="req">*</span><input name="c1Name" required></label>
-      <label>Client 1 — email <span class="req">*</span><input name="c1Email" type="email" required></label>
-      <label class="full">Client 1 — mobile<input name="c1Phone" type="tel"></label>
-      <label>Client 2 — full name<input name="c2Name"></label>
-      <label>Client 2 — email<input name="c2Email" type="email"></label>
-      <label class="full">Client 2 — mobile<input name="c2Phone" type="tel"></label>
+      <label class="c4">Client 1 — full name <span class="req">*</span><input name="c1Name" required></label>
+      <label class="c4">Client 1 — email <span class="req">*</span><input name="c1Email" type="email" required></label>
+      <label class="c4">Client 1 — mobile<input name="c1Phone" type="tel"></label>
+      <label class="c4">Client 2 — full name<input name="c2Name"></label>
+      <label class="c4">Client 2 — email<input name="c2Email" type="email"></label>
+      <label class="c4">Client 2 — mobile<input name="c2Phone" type="tel"></label>
     </div>
   </section>
 
@@ -119,13 +120,13 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <h2>5 · Listing agreement &amp; MLS</h2>
     <p class="hint">Straight from the signed listing agreement. Rough dates are fine for anything not booked yet.</p>
     <div class="grid">
-      <label>Listing agreement starts<input name="lsStart" type="date"></label>
-      <label>Listing agreement expires<input name="lsEnd" type="date"></label>
-      <label>Target date live in MLS <span class="req">*</span><input name="goLive" type="date" required></label>
-      <label>Photo appointment (if booked)<input name="photoDate" type="date"></label>
-      <label>Coming soon in MLS (up to 10 days before showings)? <span class="req">*</span><select name="comingSoon" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
-      <label>Withhold from MLS while the home is prepared? <span class="req">*</span><select name="withhold" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
-      <label class="full" data-show="withhold:Yes" hidden>Withhold until (on or before) <span class="req">*</span><input name="withholdUntil" type="date" required>
+      <label class="c3">Listing agreement starts<input name="lsStart" type="date"></label>
+      <label class="c3">Listing agreement expires<input name="lsEnd" type="date"></label>
+      <label class="c3">Target date live in MLS <span class="req">*</span><input name="goLive" type="date" required></label>
+      <label class="c3">Photo appointment (if booked)<input name="photoDate" type="date"></label>
+      <label class="c6">Coming soon in MLS (up to 10 days before showings)? <span class="req">*</span><select name="comingSoon" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label class="c6">Withhold from MLS while the home is prepared? <span class="req">*</span><select name="withhold" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label class="c6" data-show="withhold:Yes" hidden>Withhold until (on or before) <span class="req">*</span><input name="withholdUntil" type="date" required>
         <span class="hint" style="margin:4px 0 0;font-weight:400">If it goes under agreement before going live, it's only entered in MLS after closing, for comparables.</span></label>
     </div>
   </section>
@@ -134,21 +135,21 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <h2>6 · Commission</h2>
     <p class="hint">As written in Section 4 of the listing agreement. Enter 0 if nothing is offered.</p>
     <div class="grid">
-      <label>Listing firm compensation <span class="req">*</span><div class="fee"><input name="lfAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="lfUnit"><option>%</option><option>$</option></select></div></label>
-      <label>Based on <span class="req">*</span><select name="lfBasis" required><option value="">Choose…</option><option>Gross contract price</option><option>Net contract price</option></select></label>
-      <label>If the buyer is unrepresented, listing firm gets an additional<div class="fee"><input name="ubAmt" inputmode="decimal" placeholder="e.g. 2"><select name="ubUnit"><option>%</option><option>$</option></select></div></label>
-      <label>Buyer agent compensation <span class="req">*</span><div class="fee"><input name="baAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="baUnit"><option>%</option><option>$</option></select></div></label>
-      <label>Buyer facilitator compensation<div class="fee"><input name="bfAmt" inputmode="decimal" placeholder="e.g. 2"><select name="bfUnit"><option>%</option><option>$</option></select></div></label>
+      <label class="c4">Listing firm compensation <span class="req">*</span><div class="fee"><input name="lfAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="lfUnit"><option>%</option><option>$</option></select></div></label>
+      <label class="c4">Based on <span class="req">*</span><select name="lfBasis" required><option value="">Choose…</option><option>Gross contract price</option><option>Net contract price</option></select></label>
+      <label class="c4">If the buyer is unrepresented, listing firm gets an additional<div class="fee"><input name="ubAmt" inputmode="decimal" placeholder="e.g. 2"><select name="ubUnit"><option>%</option><option>$</option></select></div></label>
+      <label class="c6">Buyer agent compensation <span class="req">*</span><div class="fee"><input name="baAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="baUnit"><option>%</option><option>$</option></select></div></label>
+      <label class="c6">Buyer facilitator compensation<div class="fee"><input name="bfAmt" inputmode="decimal" placeholder="e.g. 2"><select name="bfUnit"><option>%</option><option>$</option></select></div></label>
     </div>
   </section>
 
   <section class="card" data-for="listing" hidden>
     <h2>7 · Seller permissions</h2>
     <div class="grid">
-      <label>Seller consents to dual agency? <span class="req">*</span><select name="dualAgency" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
-      <label>Can the property have a sign? <span class="req">*</span><select name="sign" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
-      <label>Audio / video recording devices in the home? <span class="req">*</span><select name="devices" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
-      <label data-show="devices:Yes" hidden>They record <span class="req">*</span><select name="devicesRecord" required><option value="">Choose…</option><option>Audio</option><option>Video</option><option>Both</option></select></label>
+      <label class="c4">Seller consents to dual agency? <span class="req">*</span><select name="dualAgency" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label class="c4">Can the property have a sign? <span class="req">*</span><select name="sign" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label class="c4">Audio / video recording devices in the home? <span class="req">*</span><select name="devices" required><option value="">Choose…</option><option>Yes</option><option>No</option></select></label>
+      <label class="c4" data-show="devices:Yes" hidden>They record <span class="req">*</span><select name="devicesRecord" required><option value="">Choose…</option><option>Audio</option><option>Video</option><option>Both</option></select></label>
       <label class="full">Anything not standard in Section 7 (Authority of Firm)?<textarea name="authority" rows="2" placeholder="Only what's unusual, e.g. firm must be present for all showings, no interior photos"></textarea></label>
       <label class="full">Additional instructions<textarea name="instructions" rows="3" placeholder="e.g. showing instructions, pets, tenant notice, access"></textarea></label>
     </div>
@@ -158,32 +159,32 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <h2>5 · The other side &amp; closing team</h2>
     <p class="hint">Fill in what you have — leave the rest blank.</p>
     <div class="grid">
-      <label>Other agent — name<input name="coName"></label>
-      <label>Other agent — brokerage<input name="coBrok"></label>
-      <label>Other agent — email<input name="coEmail" type="email"></label>
-      <label>Other agent — mobile<input name="coPhone" type="tel"></label>
-      <label>Lender — loan officer<input name="lenName"></label>
-      <label>Lender — company<input name="lenCo"></label>
-      <label>Lender — email<input name="lenEmail" type="email"></label>
-      <label>Lender — phone<input name="lenPhone" type="tel"></label>
-      <label>Title / closing attorney — contact<input name="titName"></label>
-      <label>Title / attorney — company<input name="titCo"></label>
-      <label>Title / attorney — email<input name="titEmail" type="email"></label>
-      <label>Title / attorney — phone<input name="titPhone" type="tel"></label>
+      <label class="c3">Other agent — name<input name="coName"></label>
+      <label class="c3">Other agent — brokerage<input name="coBrok"></label>
+      <label class="c3">Other agent — email<input name="coEmail" type="email"></label>
+      <label class="c3">Other agent — mobile<input name="coPhone" type="tel"></label>
+      <label class="c3">Lender — loan officer<input name="lenName"></label>
+      <label class="c3">Lender — company<input name="lenCo"></label>
+      <label class="c3">Lender — email<input name="lenEmail" type="email"></label>
+      <label class="c3">Lender — phone<input name="lenPhone" type="tel"></label>
+      <label class="c3">Title / closing attorney — contact<input name="titName"></label>
+      <label class="c3">Title / attorney — company<input name="titCo"></label>
+      <label class="c3">Title / attorney — email<input name="titEmail" type="email"></label>
+      <label class="c3">Title / attorney — phone<input name="titPhone" type="tel"></label>
     </div>
   </section>
 
-  <section class="card" data-for="ua">
+  <section class="card" data-for="ua" data-seller-only>
     <h2>6 · Utilities &amp; prorations</h2>
     <p class="hint">These aren't in the P&amp;S but I need them before closing. "Not sure" is fine — I'll chase it.</p>
     <div class="grid">
-      <label>Heating fuel to prorate? <span class="req">*</span><select name="fuel" required><option value="">Choose…</option><option>None</option><option>Oil</option><option>Propane</option><option>Oil &amp; propane</option><option>Not sure</option></select></label>
-      <label data-show="fuel:Oil|Propane">Fuel company<input name="fuelCo"></label>
-      <label data-show="fuel:Oil|Propane">Fuel company phone<input name="fuelPhone" type="tel"></label>
-      <label>Municipal water / sewer proration? <span class="req">*</span><select name="waterSewer" required><option value="">Choose…</option><option>Water &amp; sewer</option><option>Water only</option><option>Sewer only</option><option>No — private well &amp; septic</option><option>Not sure</option></select></label>
-      <label data-show="waterSewer:Water|Sewer">Water / sewer department or company<input name="wsCo"></label>
-      <label>Natural gas meter reading needed? <span class="req">*</span><select name="gas" required><option value="">Choose…</option><option>Yes</option><option>No</option><option>Not sure</option></select></label>
-      <label data-show="gas:Yes">Gas company<input name="gasCo"></label>
+      <label class="c4">Heating fuel to prorate? <span class="req">*</span><select name="fuel" required><option value="">Choose…</option><option>None</option><option>Oil</option><option>Propane</option><option>Oil &amp; propane</option><option>Not sure</option></select></label>
+      <label class="c4" data-show="fuel:Oil|Propane">Fuel company<input name="fuelCo"></label>
+      <label class="c4" data-show="fuel:Oil|Propane">Fuel company phone<input name="fuelPhone" type="tel"></label>
+      <label class="c6">Municipal water / sewer proration? <span class="req">*</span><select name="waterSewer" required><option value="">Choose…</option><option>Water &amp; sewer</option><option>Water only</option><option>Sewer only</option><option>No — private well &amp; septic</option><option>Not sure</option></select></label>
+      <label class="c6" data-show="waterSewer:Water|Sewer">Water / sewer department or company<input name="wsCo"></label>
+      <label class="c6">Natural gas meter reading needed? <span class="req">*</span><select name="gas" required><option value="">Choose…</option><option>Yes</option><option>No</option><option>Not sure</option></select></label>
+      <label class="c6" data-show="gas:Yes">Gas company<input name="gasCo"></label>
     </div>
   </section>
 
@@ -191,22 +192,22 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     <h2>7 · Contract &amp; dates</h2>
     <p class="hint">Rough dates are fine — I pull the exact deadlines from the executed P&amp;S.</p>
     <div class="grid">
-      <label>Effective date (if under agreement)<input name="effDate" type="date"></label>
-      <label>Closing date (if known)<input name="closeDate" type="date"></label>
-      <label>How is the earnest money deposit being paid? <span class="req">*</span>
+      <label class="c3">Effective date (if under agreement)<input name="effDate" type="date"></label>
+      <label class="c3">Closing date (if known)<input name="closeDate" type="date"></label>
+      <label class="c6">How is the earnest money deposit being paid? <span class="req">*</span>
         <select name="depMethod" required><option value="">Choose…</option><option>DepositLink — Lynne to send the request</option><option>Earnnest — Lynne to send the request</option><option>Wire</option><option>Personal check — mailed to Verani</option><option>Personal check — dropped off at a Verani office</option><option>Held by the other brokerage or an attorney</option><option>Not sure yet</option></select></label>
-      <label data-show="depMethod:dropped off">Which office? <span class="req">*</span><input name="depOffice" list="offices" placeholder="e.g. Portsmouth" required>
+      <label class="c6" data-show="depMethod:dropped off">Which office? <span class="req">*</span><input name="depOffice" list="offices" placeholder="e.g. Portsmouth" required>
         <datalist id="offices"><option>Exeter</option><option>Portsmouth</option><option>Newburyport</option><option>Andover</option><option>Haverhill</option><option>Methuen</option><option>Biddeford / Saco</option><option>Kennebunk</option></datalist></label>
-      <label class="full" data-show="clientSide:Buyer">Buyer agency agreement fee <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Buyer">Buyer agency agreement fee <span class="req">*</span>
         <div class="fee"><input name="buaAmt" inputmode="decimal" placeholder="e.g. 3" required><select name="buaUnit"><option>%</option><option>$</option></select></div>
         <span class="hint" style="margin:4px 0 0;font-weight:400">From your buyer agreement — I'll check it against what the seller is paying in the P&amp;S.</span></label>
-      <label data-show="clientSide:Buyer">If the seller pays less than your agreement fee, will you waive the difference? <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Buyer">If the seller pays less than your agreement fee, will you waive the difference? <span class="req">*</span>
         <select name="waive" required><option value="">Choose…</option><option>No — buyer pays the difference</option><option>Yes — waiving the difference</option><option>Partly — see note</option><option>Not applicable — seller covers it all</option></select></label>
-      <label data-show="clientSide:Seller">Buyer agent compensation in your listing agreement <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Seller">Buyer agent compensation in your listing agreement <span class="req">*</span>
         <div class="fee"><input name="lbaAmt" inputmode="decimal" placeholder="e.g. 2" required><select name="lbaUnit"><option>%</option><option>$</option></select></div></label>
-      <label data-show="clientSide:Seller">If the buyer's agent asked for more than that in the Listing Agreement, who covers the difference? <span class="req">*</span>
+      <label class="c6" data-show="clientSide:Seller">If the buyer's agent asked for more than that in the Listing Agreement, who covers the difference? <span class="req">*</span>
         <select name="cover" required><option value="">Choose…</option><option>Not applicable — same or less</option><option>Listing firm is reducing its fee to cover it</option><option>Seller agreed to pay more — listing fee unchanged</option><option>Not sure yet</option></select></label>
-      <label data-show="waive:Partly">Amount you're waiving<div class="fee"><input name="waiveAmt" inputmode="decimal"><select name="waiveUnit"><option>%</option><option>$</option></select></div></label>
+      <label class="c6" data-show="waive:Partly">Amount you're waiving<div class="fee"><input name="waiveAmt" inputmode="decimal"><select name="waiveUnit"><option>%</option><option>$</option></select></div></label>
     </div>
   </section>
 
@@ -324,6 +325,9 @@ function showSections() {
   document.querySelectorAll('[data-skip-existing]').forEach(s => { s.dataset.skip = existing ? '1' : ''; });
   document.querySelectorAll('section[data-for]').forEach(s => { s.hidden = s.dataset.for !== (listing ? 'listing' : 'ua'); });
   document.querySelectorAll('[data-skip-existing]').forEach(s => { if (s.dataset.skip) s.hidden = true; else if (!s.dataset.for) s.hidden = false; });
+  // Prorations and meter readings are the listing side's job: only asked when we have the seller
+  const sellerSide = /Seller side|Both sides/.test(form.rep.value) || (form.rep.value === 'Transaction Facilitator' && form.clientSide.value === 'Seller');
+  document.querySelectorAll('section[data-seller-only]').forEach(s => { if (!s.hidden) s.hidden = !sellerSide; });
   document.querySelectorAll('[data-show]').forEach(el => {
     const [name, want] = el.dataset.show.split(':');
     el.hidden = !(form[name].value && new RegExp(want).test(form[name].value));

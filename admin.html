@@ -641,10 +641,10 @@ function renderCal() {
     (ua || !listing.length ? head('Contract dates') + show(contract) : '') +
     (listing.length ? head('Listing dates') + show(listing) : '') +
     (!ua && listing.length ? head('Contract dates') + show(contract) : '') +
-    '<div class="row3" style="margin-top:10px;grid-template-columns:1fr 1fr 1fr">' +
+    (F.rep === 'Buyer side' ? '' : '<div class="row3" style="margin-top:10px;grid-template-columns:1fr 1fr 1fr">' +
       '<label class="f">Heating fuel<select class="i" data-path="utilities.fuel"><option></option>' + opt(['None', 'Oil', 'Propane', 'Oil & propane', 'Not sure'], (F.utilities || {}).fuel) + '</select></label>' +
       '<label class="f">Water / sewer<select class="i" data-path="utilities.waterSewer"><option></option>' + opt(['Water & sewer', 'Water only', 'Sewer only', 'No — private well & septic', 'Not sure'], (F.utilities || {}).waterSewer) + '</select></label>' +
-      '<label class="f">Gas meter reading<select class="i" data-path="utilities.gas"><option></option>' + opt(['Yes', 'No', 'Not sure'], (F.utilities || {}).gas) + '</select></label></div>' +
+      '<label class="f">Gas meter reading<select class="i" data-path="utilities.gas"><option></option>' + opt(['Yes', 'No', 'Not sure'], (F.utilities || {}).gas) + '</select></label></div>') +
     '<div class="btns" style="margin-top:10px">' + doneToggle('cal', past, 'past dates') + '<button class="btn" id="addCustom">+ Add a date</button></div></div>';
   $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '' }); renderCal(); changed(); };
 }

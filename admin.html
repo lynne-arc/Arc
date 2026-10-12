@@ -833,9 +833,22 @@ function renderEmail(kind) {
 
 function renderLog() {
   const list = F.emails || [];
+  const dt = a => new Date(a).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+  const who = s => esc(String(s || '—').replace(/"/g, '').replace(/<[^>]+>/g, '').replace(/\s+,/g, ',').trim().slice(0, 90));
+  const row = m => m.kind === 'gmail'
+    ? '<details class="log"><summary><b>' + (m.status === 'Sent' ? '↗ ' : '↙ ') + esc(m.subject) + '</b><div class="small muted">' + esc(dt(m.at)) + ' · ' + esc(m.status) +
+        (m.status === 'Sent' ? ' · to ' + who(m.to) : ' · from ' + who(m.from)) + '</div></summary>' +
+        '<div class="small" style="margin:6px 0"><a href="' + esc(m.link) + '" target="_blank" rel="noopener">Open in Gmail</a>' + (m.cc ? ' · cc ' + who(m.cc) : '') + '</div><pre>' + esc(m.body || '') + '</pre></details>'
+    : '<details class="log"><summary><b>' + esc(m.subject) + '</b><div class="small muted">' + esc(dt(m.at)) + ' · ' + esc(m.status) + ' · to ' + esc(m.to || '—') + (m.attachment ? ' · 📎 summary' : '') + '</div></summary><pre>' + esc(m.body || '') + '</pre></details>';
   $('#cLog').innerHTML = '<div class="ch"><h3>Email log</h3><span class="sub">' + list.length + ' on this file</span></div><div class="cb">' +
-    (list.length ? list.slice(0, 40).map(m => '<details class="log"><summary><b>' + esc(m.subject) + '</b><div class="small muted">' + esc(new Date(m.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + ' · ' + esc(m.status) + ' · to ' + esc(m.to || '—') + '</div></summary><pre>' + esc(m.body || '') + '</pre></details>').join('')
-      : '<div class="empty">Drafts and reminders for this file will be listed here.</div>') + '</div>';
+    (list.length ? list.slice(0, 60).map(row).join('') : '<div class="empty">Emails about this file (sent and received in Gmail) and drafts made here are listed here.</div>') +
+    '<div class="btns" style="margin-top:8px"><button class="btn" id="syncGmail">Check Gmail now</button><span class="small faint">Also checks by itself every 30 minutes</span></div></div>';
+  $('#syncGmail').onclick = async e => {
+    const b = e.target; b.disabled = true; b.innerHTML = '<span class="spin"></span>';
+    try { await flush(); const r = await call('syncGmail', {}); const g = await call('get', { id: F.id }); F.emails = g.file.emails; renderLog();
+      toast(r.logged ? r.logged + ' new email' + (r.logged > 1 ? 's' : '') + ' logged' : 'No new emails for your files'); }
+    catch (err) { toast(err.message, true); b.disabled = false; b.textContent = 'Check Gmail now'; }
+  };
 }
 
 // Checklist items that only apply when that contingency is in the contract

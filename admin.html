@@ -63,7 +63,7 @@ a{color:var(--navy2)}
 .ch h3{margin:0;font:600 11px var(--sans);letter-spacing:.12em;text-transform:uppercase;color:var(--soft)}
 .card.t-blue .ch{background:#EAF0F8} .card.t-pink .ch{background:#F9ECEF} .card.t-grey .ch{background:#F1F2F4}
 .card.t-mint .ch{background:#E9F4EF} .card.t-lav .ch{background:#EFEDF7} .card.t-sand .ch{background:#F3F1EC}
-.card.t-green .ch{background:#E8F3EC} .card.t-gold .ch{background:#E8ECF6}
+.card.t-green .ch{background:#E8F3EC} .card.t-yellow .ch{background:#FFF6D6} .card.t-yellow .ch .title{font-size:21px;margin:0;text-transform:none;letter-spacing:0;color:var(--navy)} .card.t-gold .ch{background:#E8ECF6}
 .ch .sub{font-size:12px;color:var(--faint)}
 .cb{padding:14px}
 .card.email .ch{background:#FBEEE9}
@@ -410,6 +410,7 @@ function renderFile() {
     '<div id="pendBanner"></div>' +
     '<div class="grid3">' +
       '<div class="col">' +
+        '<section class="card t-yellow" id="cDeal"></section>' +
         '<section class="card t-blue" id="cSummary"></section>' +
         '<section class="card t-pink" id="cAgent"></section>' +
         '<section class="card t-grey" id="cTerms"></section>' +
@@ -462,15 +463,16 @@ function renderSummary() {
     .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
     .sort((a, b) => dateOrder(a.date, b.date, a.k, b.k));
   const rows = items.map(x => '<tr' + (ua && afterClosing(x.date, x.k) ? ' style="color:var(--red)" title="This date is after closing"' : '') + '><td>' + esc(x.label) + (ua && afterClosing(x.date, x.k) ? ' <b class="small">· after closing</b>' : '') + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
-  $('#cSummary').innerHTML =
-    '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
-    '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
+  $('#cDeal').innerHTML =
+    '<div class="ch"><h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<div class="sumlines">' +
       line('Buyer', F.buyers || names('Buyer')) + line('Seller', F.sellers || names('Seller')) +
       line('Listing agent', agentLine('Listing agent')) + line('Buyer\'s agent', agentLine('Buyer agent')) +
       line('Co-broke fee', feeShort()) + line('Price', p.price ? money(p.price) : '') +
       'Contingencies: <b>' + esc(cont.concat(otherConts()).join(', ') || 'None') + '</b>' +
-    '</div>' +
+    '</div></div>';
+  $('#cSummary').innerHTML =
+    '<div class="ch"><h3>Important dates</h3></div><div class="cb">' +
     (contract ? '<div class="cfile"><div><div class="n">' + esc(contract.name) + '</div><div class="m">' + esc(F.status) + (F.updated ? ' · updated ' + esc(new Date(F.updated).toLocaleDateString('en-US', {month:'short', day:'numeric'})) : '') + '</div></div>' +
       '<div class="btns"><button class="btn" data-view="' + esc(contract.id) + '">View contract</button><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
     (function () { const L = DOCS.find(x => x.id === F.listingDocId); return L ? '<div class="cfile"><div><div class="n">' + esc(L.name) + '</div><div class="m">Listing agreement</div></div><div class="btns"><button class="btn" data-view="' + esc(L.id) + '">View</button><button class="btn ghost" id="rereadListing">Read again</button></div></div>' : ''; })() +

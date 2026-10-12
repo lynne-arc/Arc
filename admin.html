@@ -745,12 +745,16 @@ function whoIsWho(withContacts) {
   ].filter(Boolean).join('\n');
 }
 function datesBlock() {
-  const rows = DATE_KEYS.filter(([k]) => F.dates[k] && (k === 'effective' || k === 'closing' || F.terms[k] !== false)).map(([k, l]) => {
-    if (k === 'deposit') return 'Earnest money deposit: ' + (F.depositAmount ? money(F.depositAmount) + ' due ' : '') + fmt(F.dates[k], true);
-    if (k === 'closing') return 'Closing: on or before ' + fmt(F.dates[k], true);
-    if (k === 'effective') return 'Effective date: ' + fmt(F.dates[k], true);
-    return l + ' deadline: ' + fmt(F.dates[k], true);
-  }).concat((F.custom || []).filter(c => c.date && c.label).map(c => c.label + ': ' + fmt(c.date, true)));
+  // Contract dates only, in date order, closing always last (same as the Executed Contract Summary)
+  const rows = DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, l, d: F.dates[k] }))
+    .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))
+    .sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0))
+    .map(({ k, l, d }) => {
+      if (k === 'deposit') return 'Earnest money deposit: ' + (F.depositAmount ? money(F.depositAmount) + ' due ' : '') + fmt(d, true);
+      if (k === 'closing') return 'Closing: on or before ' + fmt(d, true);
+      if (k === 'effective') return 'Effective date: ' + fmt(d, true);
+      return l + (k ? ' deadline' : '') + ': ' + fmt(d, true);
+    });
   return rows.length ? rows.join('\n') : '(dates to follow)';
 }
 function where() { const p = F.property || {}; return [p.address, p.town, p.state].filter(Boolean).join(', ') || 'the property'; }

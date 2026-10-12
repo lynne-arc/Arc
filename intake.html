@@ -203,8 +203,8 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
       <label class="c3">Closing date (if known)<input name="closeDate" type="date"></label>
       <label class="c6">How is the earnest money deposit being paid? <span class="req">*</span>
         <select name="depMethod" required><option value="">Choose…</option><option>DepositLink — Lynne to send the request</option><option>Earnnest — Lynne to send the request</option><option>Wire</option><option>Personal check — mailed to Verani</option><option>Personal check — dropped off at a Verani office</option><option>Held by the other brokerage or an attorney</option><option>Not sure yet</option></select></label>
-      <label class="c6" data-show="depMethod:dropped off">Which office? <span class="req">*</span><input name="depOffice" list="offices" placeholder="e.g. Portsmouth" required>
-        <datalist id="offices"><option>Exeter</option><option>Portsmouth</option><option>Newburyport</option><option>Andover</option><option>Haverhill</option><option>Methuen</option><option>Biddeford / Saco</option><option>Kennebunk</option></datalist></label>
+      <label class="c6" data-show="depMethod:dropped off">Which office? <span class="req">*</span><select name="depOffice" required><option value="">Choose…</option><option>Portsmouth</option><option>Exeter</option><option>Biddeford</option><option>Andover</option><option>Haverhill</option><option>Methuen</option><option>Other Verani office</option></select></label>
+      <label class="c6" data-show="depOffice:Other">Which Verani office? <span class="req">*</span><input name="depOfficeOther" required placeholder="e.g. Londonderry"></label>
       <label class="c6" data-show="clientSide:Buyer|Both">Buyer agency agreement fee <span class="req">*</span>
         <div class="fee"><input name="buaAmt" inputmode="decimal" placeholder="e.g. 3" required><select name="buaUnit"><option>%</option><option>$</option></select></div>
         <span class="hint" style="margin:4px 0 0;font-weight:400">From your buyer agreement — I'll check it against what the seller is paying in the P&amp;S.</span></label>
@@ -349,6 +349,7 @@ function showSections() {
   const ua = !listing && !existing, cs = form.clientSide.value;
   document.getElementById('agListingBox').hidden = !(ua && /Seller|Both/.test(cs) && form.rep.value !== 'Transaction Facilitator');
   document.getElementById('agBuyerBox').hidden = !(ua && /Buyer|Both/.test(cs) && form.rep.value !== 'Transaction Facilitator');
+  if (form.depOffice.closest('label').hidden) form.depOfficeOther.closest('label').hidden = true;
   let n = 0;
   form.querySelectorAll('section.card').forEach(s => { if (!s.hidden) { n++; const h = s.querySelector('h2'); h.textContent = h.textContent.replace(/^\d+/, n); } });
   document.getElementById('dropTitle').textContent = listing ? 'Add any documents (optional)' : 'Add the executed P&S';
@@ -395,6 +396,8 @@ form.addEventListener('submit', async e => {
   try { agreements = await Promise.all(agreeIn.map(async ([kind, id]) => Object.assign({ kind }, await readFile(document.getElementById(id).files[0])))); }
   catch (x) { err.textContent = x.message; err.hidden = false; return; }
   const data = {}; new FormData(form).forEach((v, k) => { if (typeof v === 'string') data[k] = v.trim(); });
+  if (data.depOffice === 'Other Verani office' && data.depOfficeOther) data.depOffice = data.depOfficeOther;
+  delete data.depOfficeOther;
   // only send the fields for the sections the agent could see
   form.querySelectorAll('[hidden] [name]').forEach(el => { delete data[el.name]; });
   form.querySelectorAll('[name][hidden]').forEach(el => { delete data[el.name]; });

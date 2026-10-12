@@ -390,19 +390,20 @@ function renderTeams() {
   const lic = m => ['NH', 'ME', 'MA'].filter(k => (m.licenses || {})[k]).map(k => k + ' ' + m.licenses[k]).join(' · ');
   const view = '<div class="ch"><h3>Agent teams</h3><span class="sub">Every member sees the team\'s files in their portal</span></div><div class="cb">' +
     (teams.length ? teams.map(t => '<div class="up" style="cursor:default;align-items:flex-start"><div><b>' + esc(t.name) + '</b>' + (t.brokerage ? ' <span class="small muted">· ' + esc(t.brokerage) + '</span>' : '') +
-      (t.members || []).map(m => { const offs = partyOffice(m); return '<div class="small">' + esc(m.name) + ' <span class="muted">' + esc([m.email, m.phone].filter(Boolean).join(' · ')) + '</span>' + (lic(m) ? ' <span class="faint">· ' + esc(lic(m)) + '</span>' : '') +
+      (t.members || []).map(m => { const offs = partyOffice(m); return '<div class="small">' + esc(m.name) + (m.allFiles ? ' <span class="chip">all files</span>' : '') + ' <span class="muted">' + esc([m.email, m.phone].filter(Boolean).join(' · ')) + '</span>' + (lic(m) ? ' <span class="faint">· ' + esc(lic(m)) + '</span>' : '') +
         (offs.length ? ' <span class="faint">· ' + esc(offs.map(o => o.name + ' office ' + ['NH', 'ME', 'MA'].filter(k => (o.licenses || {})[k]).map(k => k + ' ' + o.licenses[k]).join(' ')).join(' / ')) + '</span>' : '') + '</div>'; }).join('') +
       sharedNote(t) +
       '</div><button class="btn small" data-editteam="' + esc(t.id) + '">Edit</button></div>').join('') : '<div class="empty">No teams yet.</div>') +
     '<div class="btns" style="margin-top:8px"><button class="btn" data-editteam="new">+ New team</button></div></div>';
   if (!TEAM_EDIT) { el.innerHTML = view; return; }
-  const t = TEAM_EDIT, row = (m, i) => '<div class="row3" style="grid-template-columns:1.3fr 1.6fr 1fr .8fr .8fr .8fr auto auto;gap:6px;margin-bottom:6px">' +
+  const t = TEAM_EDIT, row = (m, i) => '<div class="row3" style="grid-template-columns:1.3fr 1.6fr 1fr .8fr .8fr .8fr auto auto auto;gap:6px;margin-bottom:6px;align-items:center">' +
     [['name', 'Name'], ['email', 'Email'], ['phone', 'Mobile']].map(([k, ph]) => '<input class="i" data-tm="' + i + '" data-tk="' + k + '" value="' + esc(m[k] || '') + '" placeholder="' + ph + '">').join('') +
     ['NH', 'ME', 'MA'].map(k => '<input class="i" data-tm="' + i + '" data-tl="' + k + '" value="' + esc((m.licenses || {})[k] || '') + '" placeholder="' + k + ' lic #">').join('') +
+    '<label class="small" style="display:flex;gap:4px;align-items:center;white-space:nowrap" title="Sees every file on this team in their portal"><input type="checkbox" data-tmall="' + i + '"' + (m.allFiles ? ' checked' : '') + '> All files</label>' +
     '<button class="btn small" data-tmroster="' + i + '" title="Fill mobile, email and license numbers from the Verani rosters">Roster</button><button class="btn ghost danger" data-tmdel="' + i + '">✕</button></div>';
   el.innerHTML = '<div class="ch"><h3>' + (t.id ? 'Edit team' : 'New team') + '</h3></div><div class="cb">' +
     '<div class="row2" style="margin-bottom:10px"><label class="f">Team name<input class="i" id="tName" value="' + esc(t.name || '') + '"></label><label class="f">Brokerage<input class="i" id="tBrok" value="' + esc(t.brokerage || '') + '"></label></div>' +
-    '<div class="small muted" style="margin-bottom:4px">Members (each signs in with their own email). Type a name and press <b>Roster</b> to fill their mobile, email and license numbers from the Verani rosters.</div>' +
+    '<div class="small muted" style="margin-bottom:4px">Members (each signs in with their own email). Type a name and press <b>Roster</b> to fill their mobile, email and license numbers. Tick <b>All files</b> for team leads who see every team file; everyone else only sees files they started, plus any you open up to them on the file.</div>' +
     (t.members || []).map(row).join('') + sharedNote(t) +
     '<div class="small faint" style="margin:4px 0 8px">Two people on one email (e.g. a team alias)? Put the same email on both: emails show it as one shared address, and either of them can sign in with it.</div>' +
     '<div class="btns"><button class="btn" id="tAdd">+ Add member</button><span style="flex:1"></span>' + (t.id ? '<button class="btn ghost danger" id="tDel">Delete team</button>' : '') +
@@ -413,6 +414,7 @@ document.addEventListener('input', e => {
   if (x.id === 'tName') TEAM_EDIT.name = x.value; else if (x.id === 'tBrok') TEAM_EDIT.brokerage = x.value;
   else if (x.dataset.tk) TEAM_EDIT.members[+x.dataset.tm][x.dataset.tk] = x.value;
   else if (x.dataset.tl) { const m = TEAM_EDIT.members[+x.dataset.tm]; m.licenses = m.licenses || {}; m.licenses[x.dataset.tl] = x.value; }
+  else if (x.dataset.tmall !== undefined) TEAM_EDIT.members[+x.dataset.tmall].allFiles = x.checked;
 });
 document.addEventListener('click', async e => {
   const b = e.target.closest('#teamsCard [data-editteam], #teamsCard button'); if (!b) return;
@@ -709,10 +711,23 @@ function renderTodo() {
   $('#addTodo').onclick = () => { const v = $('#newTodo').value.trim(); if (!v) return; F.todos.push({ text: v, done: false, src: '' }); renderTodo(); changed(); };
 }
 
+// Who on the team can see this file in their portal: whoever started it always; anyone else only if Lynne ticks them
+function viewersBox() {
+  const t = (S.teams || []).find(x => x.id === F.team); if (!t) return '';
+  const ours = (F.parties || []).filter(p => p.ours && p.email).map(p => p.email.trim().toLowerCase());
+  const seen = {}, people = [];
+  (t.members || []).forEach(m => { const em = String(m.email || '').trim().toLowerCase(); if (!em) return;
+    if (seen[em]) { seen[em].names.push(m.name.split(/\s+/)[0]); seen[em].lead = seen[em].lead || !!m.allFiles; return; } seen[em] = { em, names: [m.name.split(/\s+/)[0]], lead: !!m.allFiles }; people.push(seen[em]); });
+  const v = (F.viewers || []).map(x => String(x).toLowerCase());
+  return '<div class="f"><span>Can see this file in their portal</span>' + people.map(p => {
+    const own = ours.indexOf(p.em) > -1, fixed = own || p.lead;
+    return '<label class="small" style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" data-viewer="' + esc(p.em) + '"' + (fixed || v.indexOf(p.em) > -1 ? ' checked' : '') + (fixed ? ' disabled' : '') + '> ' +
+      esc(p.names.join(' & ')) + ' <span class="faint">' + esc(p.em) + (own ? ' · started this file' : p.lead ? ' · sees all team files' : '') + '</span></label>'; }).join('') + '</div>';
+}
 function renderFileInfo() {
   $('#cFile').innerHTML = '<div class="ch"><h3>File details</h3><span class="sub">Created ' + esc(fmt(F.created, true)) + '</span></div><div class="cb stack">' +
     '<label class="f">Status<select class="i" data-path="status">' + opt(S.settings.statuses || [], F.status) + '</select></label>' +
-    ((S.teams || []).length ? '<label class="f">Agent team<select class="i" data-path="team"><option value="">— not a team file —</option>' + (S.teams || []).map(t => '<option value="' + esc(t.id) + '"' + (F.team === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</select></label>' : '') +
+    ((S.teams || []).length ? '<label class="f">Agent team<select class="i" data-path="team"><option value="">— not a team file —</option>' + (S.teams || []).map(t => '<option value="' + esc(t.id) + '"' + (F.team === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</select></label>' + viewersBox() : '') +
     '<div class="row2"><label class="f">Service<select class="i" data-path="service"><option></option>' + opt(SERVICES, F.service) + '</select></label>' +
     '<label class="f">Representation<select class="i" data-path="rep"><option></option>' + opt(REPS, F.rep) + '</select></label></div>' +
     fld('Property address', 'property.address') +
@@ -1061,6 +1076,7 @@ function onEdit(e) {
     if (getPath(F, el.dataset.path) === val) return;
     setPath(F, el.dataset.path, val);
     if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') { renderTerms(); renderCheck(); }
+    if (el.dataset.path === 'team') renderFileInfo();
     if ((el.dataset.path.indexOf('utilities.') === 0 || el.dataset.path === 'dates.closing') && e.type === 'change') renderCal();
     if (/^(buyerAgreementFee|listingBuyerFee)\./.test(el.dataset.path) && e.type === 'change') { renderTodo(); const b = document.getElementById('feeLine'); if (b) b.textContent = feeShort() || '—'; }
     if (el.dataset.path.indexOf('depositMethod.') === 0 && e.type === 'change') { renderSummary(); if (el.dataset.path === 'depositMethod.method') renderCal(); }
@@ -1079,6 +1095,8 @@ function onEdit(e) {
     const t = F.todos[+el.dataset.todo]; t.done = el.checked; t.at = el.checked ? new Date().toISOString() : ''; renderTodo(); changed();
   } else if (el.dataset.gap && e.type === 'change') {
     F.gapDone = F.gapDone || {}; F.gapDone[el.dataset.gap] = el.checked; renderTodo(); changed();
+  } else if (el.dataset.viewer && e.type === 'change') {
+    const em = el.dataset.viewer; F.viewers = (F.viewers || []).filter(x => String(x).toLowerCase() !== em); if (el.checked) F.viewers.push(em); changed();
   } else if (el.dataset.eattach) {
     E[el.dataset.eattach].attach = el.checked;
   } else if (el.dataset.email) {

@@ -417,7 +417,7 @@ function renderFile() {
 function renderPending() {
   const r = F.reading, need = r && !F.confirmed;
   $('#pendBanner').innerHTML = need ?
-    '<div class="banner" style="margin-bottom:16px"><div><b>Contract read: check the details, then confirm</b><div class="small muted">Read ' + esc(new Date(r.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '. Everything is filled in below. Change anything that\'s wrong right on the page. Reminders for this file start once you confirm.</div></div>' +
+    '<div class="banner" style="margin-bottom:16px"><div><b>' + (r.kind === 'listing' ? 'Listing agreement' : 'Contract') + ' read: check the details, then confirm</b><div class="small muted">Read ' + esc(new Date(r.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '. Everything is filled in below. Change anything that\'s wrong right on the page. Reminders for this file start once you confirm.</div></div>' +
     '<button class="btn primary" id="confirmBtn">Confirm</button></div>'
     : (F.readError && (!r || F.readError.at > r.at)) ? '<div class="banner" style="margin-bottom:16px;background:#F8E6E4;border-color:#E2B8B3"><div><b>The contract couldn\'t be read</b><div class="small" style="color:#8B3A3A">' + esc(F.readError.message) + ' (' + esc(new Date(F.readError.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + ')</div></div><button class="btn" id="retryRead">Read again</button></div>'
     : F.pending ? '<div class="banner" style="margin-bottom:16px"><div><b>This contract was read with an older version</b><div class="small muted">Press Read again to fill in the file.</div></div></div>' : '';
@@ -449,8 +449,15 @@ function renderSummary() {
     '</div>' +
     (contract ? '<div class="cfile"><div><div class="n">' + esc(contract.name) + '</div><div class="m">' + esc(F.status) + (F.updated ? ' · updated ' + esc(new Date(F.updated).toLocaleDateString('en-US', {month:'short', day:'numeric'})) : '') + '</div></div>' +
       '<div class="btns"><a class="btn" href="' + esc(contract.url) + '" target="_blank" rel="noopener">View contract</a><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
+    (function () { const L = DOCS.find(x => x.id === F.listingDocId); return L ? '<div class="cfile"><div><div class="n">' + esc(L.name) + '</div><div class="m">Listing agreement</div></div><div class="btns"><a class="btn" href="' + esc(L.url) + '" target="_blank" rel="noopener">View</a><button class="btn ghost" id="rereadListing">Read again</button></div></div>' : ''; })() +
     (rows ? '<table class="dates"><tr><th>Item</th><th style="text-align:right">Date</th></tr>' + rows + '</table>' : '<div class="empty">No dates yet. Read the contract or add them in the Calendar.</div>') +
     '</div>';
+  const rl = $('#rereadListing');
+  if (rl) rl.onclick = async () => {
+    showWorking('Reading the listing agreement…', 'This usually takes 20–40 seconds.');
+    try { const r = await call('rereadContract', { id: F.id, doc: 'listing' }); closeModal(); applyServerFile(r); if (r.extracted) toast('Listing agreement read. Check the details, then press Confirm.'); else toast(r.error, true); }
+    catch (err) { closeModal(); toast(err.message, true); }
+  };
   const rb = $('#rereadBtn');
   if (rb) rb.onclick = async () => {
     showWorking('Reading the contract again…', 'This usually takes 20–40 seconds.');
@@ -496,13 +503,16 @@ function feeGaps(terms) {
   return out;
 }
 function renderAgent() {
-  const rows = (F.intake || []).slice(), ct = F.contractTerms || {};
-  if (ct.concessions) rows.push({ group: 'Commission', label: 'Concessions (P&S)', value: ct.concessions });
+  const ct = F.contractTerms || {};
+  const groups = [['From the agent', (F.intake || []).filter(r => r.group !== 'Under agreement')], ['Under agreement (agent)', (F.intake || []).filter(r => r.group === 'Under agreement')],
+    ['From the listing agreement', F.listingRows || []], ['From the P&S', ct.concessions ? [{ label: 'Concessions', value: ct.concessions }] : []]].filter(g => g[1].length);
   const el = $('#cAgent');
-  if (!rows.length) { el.hidden = true; return; }
+  if (!groups.length) { el.hidden = true; return; }
   el.hidden = false;
-  el.innerHTML = '<div class="ch"><h3>From the agent</h3><span class="sub">File Input page</span></div><div class="cb">' +
-    '<table class="dates">' + rows.map(r => '<tr><td style="color:var(--soft);width:48%;padding-right:10px">' + esc(r.label.replace(/^⚑ /, '')) + '</td><td style="text-align:left">' + esc(r.value) + '</td></tr>').join('') + '</table></div>';
+  el.innerHTML = '<div class="ch"><h3>File info</h3><span class="sub">Agent answers &amp; agreements</span></div><div class="cb">' +
+    groups.map(([name, rows]) => '<div class="small muted" style="margin:6px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + esc(name) + '</div>' +
+      '<table class="dates">' + rows.map(r => '<tr><td style="color:var(--soft);width:48%;padding-right:10px">' + esc(String(r.label).replace(/^⚑ /, '')) + '</td><td style="text-align:left' + (/^⚑/.test(r.label) ? ';color:var(--red)' : '') + '">' + esc(r.value) + '</td></tr>').join('') + '</table>').join('') +
+    '</div>';
 }
 function renderTodo() {
   F.todos = F.todos || []; F.gapDone = F.gapDone || {};

@@ -77,6 +77,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
           <option>Under Agreement – Contract to Close</option>
           <option>Listing – Full Listing Setup</option>
           <option>Listing – Compliance / Paperwork Only</option></select></label>
+      <label class="full" id="existingWrap" hidden>Is this P&amp;S for one of your listings that ARC already has?
+        <select name="existingId"><option value="">No — this is a new file</option></select>
+        <span class="hint" style="margin:4px 0 0;font-weight:400">Pick the listing and I'll add the P&amp;S to the same file. You can skip the property and client sections.</span></label>
       <label>Who do you represent? <span class="req">*</span>
         <select name="rep" required><option value="">Choose…</option><option>Buyer side</option><option>Seller side</option><option>Both sides</option><option>Transaction Facilitator</option></select></label>
       <label>Your client is the <span class="req">*</span>
@@ -88,7 +91,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" data-skip-existing>
     <h2>3 · The property</h2>
     <div class="grid">
       <label class="full">Street address <span class="req">*</span><input name="address" required></label>
@@ -101,7 +104,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
     </div>
   </section>
 
-  <section class="card">
+  <section class="card" data-skip-existing>
     <h2>4 · Your client(s)</h2>
     <div class="grid">
       <label>Client 1 — full name <span class="req">*</span><input name="c1Name" required></label>
@@ -247,21 +250,29 @@ async function call(action, payload) {
   return j.data;
 }
 
-// Returning agent → fill in their details
-form.agentEmail.addEventListener('change', async () => {
+// Returning agent → fill in their details; once their mobile matches, offer their open listings
+let myListings = [];
+async function lookupAgent(withPhone) {
   const email = form.agentEmail.value.trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
   try {
-    const a = await call('agentLookup', { email });
+    const a = await call('agentLookup', { email, phone: withPhone ? form.agentPhone.value : '' });
     if (!a) return;
     if (!form.agentName.value) form.agentName.value = a.name;
-    if (!form.agentPhone.value) form.agentPhone.value = a.phone;
     if (!form.brokerage.value) form.brokerage.value = a.company;
     const w = document.getElementById('welcome');
     w.textContent = 'Welcome back, ' + String(a.name).split(' ')[0] + ' — I\'ve filled in your details. Please check they\'re still right.';
     w.hidden = false;
+    if (withPhone) { myListings = a.listings || []; fillListings(); }
   } catch (e) { /* quietly carry on */ }
-});
+}
+function fillListings() {
+  const sel = form.existingId;
+  sel.innerHTML = '<option value="">No — this is a new file</option>' + myListings.map(l => '<option value="' + l.id + '">' + l.label.replace(/[<>&"]/g, '') + '</option>').join('');
+  showSections();
+}
+form.agentEmail.addEventListener('change', () => lookupAgent(!!form.agentPhone.value.trim()));
+form.agentPhone.addEventListener('change', () => lookupAgent(true));
 
 // Representation → which side the client is on
 form.rep.addEventListener('change', () => {
@@ -277,7 +288,12 @@ form.service.addEventListener('change', () => {
 // Fields marked data-show="name:Value|Other" appear only when that answer is chosen.
 function showSections() {
   const listing = /Listing/.test(form.service.value);
+  document.getElementById('existingWrap').hidden = listing || !myListings.length;
+  const existing = !listing && !!form.existingId.value;
+  if (existing) { form.rep.value = 'Seller side'; form.clientSide.value = 'Seller'; }
+  document.querySelectorAll('[data-skip-existing]').forEach(s => { s.dataset.skip = existing ? '1' : ''; });
   document.querySelectorAll('section[data-for]').forEach(s => { s.hidden = s.dataset.for !== (listing ? 'listing' : 'ua'); });
+  document.querySelectorAll('[data-skip-existing]').forEach(s => { if (s.dataset.skip) s.hidden = true; else if (!s.dataset.for) s.hidden = false; });
   document.querySelectorAll('[data-show]').forEach(el => {
     const [name, want] = el.dataset.show.split(':');
     el.hidden = !(form[name].value && new RegExp(want).test(form[name].value));
@@ -319,7 +335,7 @@ form.addEventListener('submit', async e => {
   try {
     const r = await call('intake', { form: data, contract });
     form.hidden = true;
-    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (contract ? ' — your document is already with me.' : (/Listing/.test(data.service) ? '. Please email the signed listing agreement to file@arkroyalclosings.com.' : '. Please email the executed P&S to file@arkroyalclosings.com when you have it.'));
+    document.getElementById('doneMsg').textContent = 'Your file number is ' + r.id + '. I\'ll be in touch shortly' + (r.existing ? ' — the P&S has been added to your listing file.' : '') + (contract ? ' Your document is already with me.' : (/Listing/.test(data.service) ? '. Please email the signed listing agreement to file@arkroyalclosings.com.' : '. Please email the executed P&S to file@arkroyalclosings.com when you have it.'));
     document.getElementById('done').hidden = false; window.scrollTo(0, 0);
   } catch (x) {
     err.textContent = 'Sorry — that didn\'t go through (' + x.message + '). Please try again, or email lynne@arkroyalclosings.com.';

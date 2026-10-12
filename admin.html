@@ -735,9 +735,9 @@ function renderDocs() {
   document.querySelectorAll('[data-docrole]').forEach(sel => sel.onchange = async () => {
     const role = sel.value; if (!role) return;
     if (role === 'pns' && F.contractFileId && !confirm('Read this document as the executed P&S? It replaces the dates and terms from the last reading, and you\'ll need to Confirm again.')) { sel.value = ''; return; }
-    sel.disabled = true; toast(role === 'pns' ? 'Reading the P&S… about 30 seconds' : 'Saving…');
+    sel.disabled = true; toast(role === 'none' ? 'Saving…' : 'Reading it… about 30 seconds');
     try { await flush(); const r = await call('setDocRole', { id: F.id, docId: sel.dataset.docrole, role }); setFile(r.file, r.docs);
-      toast(role === 'pns' ? (r.error || (r.file.readError ? r.file.readError.message : 'P&S read. Check the details and press Confirm.')) : 'Saved', !!(r.error || (role === 'pns' && r.file.readError))); }
+      toast(role === 'pns' ? (r.error || (r.file.readError ? r.file.readError.message : 'P&S read. Check the details and press Confirm.')) : (r.note || 'Saved'), !!(r.error || (role === 'pns' && r.file.readError) || /could not/i.test(r.note || ''))); }
     catch (err) { toast(err.message, true); sel.disabled = false; sel.value = ''; }
   });
   $('#docIn').onchange = async e => {

@@ -297,7 +297,7 @@ async function start() {
     store('arcKey', KEY);
     $('#login').hidden = true; $('#app').hidden = false;
     $('#testBadge').hidden = !S.settings.testMode;
-    $('#engineVer').textContent = 'Engine ' + (S.settings.engine || 'OLD — redeploy Code.gs') + (S.settings.hasClaudeKey ? '' : ' · no Claude key');
+    $('#engineVer').textContent = 'Page ' + PAGE_VERSION + ' · Engine ' + (S.settings.engine || 'OLD — redeploy Code.gs') + (S.settings.hasClaudeKey ? '' : ' · no Claude key');
     refreshContacts(); fillSelect(); showHome();
   } catch (err) {
     if (/authori/i.test(err.message)) { store('arcKey', null); KEY = ''; $('#loginMsg').textContent = 'That key didn\'t work — please check it and try again.'; }
@@ -379,6 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
+const PAGE_VERSION = 'p38';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });

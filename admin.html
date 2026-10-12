@@ -372,9 +372,49 @@ async function showHome() {
         S.contacts.filter(c => c.type === 'Agent' && c.email).sort((a, b) => String(a.name).localeCompare(b.name)).map(c => '<option value="' + esc(c.email) + '">' + esc(c.name + (c.company ? ' · ' + c.company : '') + ' · ' + c.email) + '</option>').join('') +
       '</select><button class="btn primary" id="asGo">Open their portal</button></div>' +
       '<div class="small faint" style="margin-top:6px">Opens in a new tab, signed in as them for 12 hours. Anything you send goes on their file as if they sent it.</div></div></div>' +
+    '<div class="card" style="margin-top:18px" id="teamsCard"></div>' +
     (S.files.length ? '' : '<div class="banner" style="margin-top:18px"><div><b>Welcome to your TC Dashboard</b><div class="small muted">Start with "+ New file", "Read a new contract", or send an agent your File Input page.</div></div></div>');
+  renderTeams();
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
+/* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
+let TEAM_EDIT = null;
+function renderTeams() {
+  const el = document.getElementById('teamsCard'); if (!el) return;
+  const teams = S.teams || [];
+  const lic = m => ['NH', 'ME', 'MA'].filter(k => (m.licenses || {})[k]).map(k => k + ' ' + m.licenses[k]).join(' · ');
+  const view = '<div class="ch"><h3>Agent teams</h3><span class="sub">Every member sees the team\'s files in their portal</span></div><div class="cb">' +
+    (teams.length ? teams.map(t => '<div class="up" style="cursor:default;align-items:flex-start"><div><b>' + esc(t.name) + '</b>' + (t.brokerage ? ' <span class="small muted">· ' + esc(t.brokerage) + '</span>' : '') +
+      (t.members || []).map(m => '<div class="small">' + esc(m.name) + ' <span class="muted">' + esc([m.email, m.phone].filter(Boolean).join(' · ')) + '</span>' + (lic(m) ? ' <span class="faint">· ' + esc(lic(m)) + '</span>' : '') + '</div>').join('') +
+      '</div><button class="btn small" data-editteam="' + esc(t.id) + '">Edit</button></div>').join('') : '<div class="empty">No teams yet.</div>') +
+    '<div class="btns" style="margin-top:8px"><button class="btn" data-editteam="new">+ New team</button></div></div>';
+  if (!TEAM_EDIT) { el.innerHTML = view; return; }
+  const t = TEAM_EDIT, row = (m, i) => '<div class="row3" style="grid-template-columns:1.3fr 1.6fr 1fr .8fr .8fr .8fr auto;gap:6px;margin-bottom:6px">' +
+    [['name', 'Name'], ['email', 'Email'], ['phone', 'Mobile']].map(([k, ph]) => '<input class="i" data-tm="' + i + '" data-tk="' + k + '" value="' + esc(m[k] || '') + '" placeholder="' + ph + '">').join('') +
+    ['NH', 'ME', 'MA'].map(k => '<input class="i" data-tm="' + i + '" data-tl="' + k + '" value="' + esc((m.licenses || {})[k] || '') + '" placeholder="' + k + ' lic #">').join('') +
+    '<button class="btn ghost danger" data-tmdel="' + i + '">✕</button></div>';
+  el.innerHTML = '<div class="ch"><h3>' + (t.id ? 'Edit team' : 'New team') + '</h3></div><div class="cb">' +
+    '<div class="row2" style="margin-bottom:10px"><label class="f">Team name<input class="i" id="tName" value="' + esc(t.name || '') + '"></label><label class="f">Brokerage<input class="i" id="tBrok" value="' + esc(t.brokerage || '') + '"></label></div>' +
+    '<div class="small muted" style="margin-bottom:4px">Members (each signs in with their own email). License numbers: fill in the states they\'re licensed in.</div>' +
+    (t.members || []).map(row).join('') +
+    '<div class="btns"><button class="btn" id="tAdd">+ Add member</button><span style="flex:1"></span>' + (t.id ? '<button class="btn ghost danger" id="tDel">Delete team</button>' : '') +
+    '<button class="btn ghost" id="tCancel">Cancel</button><button class="btn primary" id="tSave">Save team</button></div></div>';
+}
+document.addEventListener('input', e => {
+  const x = e.target; if (!TEAM_EDIT || x.closest('#teamsCard') === null) return;
+  if (x.id === 'tName') TEAM_EDIT.name = x.value; else if (x.id === 'tBrok') TEAM_EDIT.brokerage = x.value;
+  else if (x.dataset.tk) TEAM_EDIT.members[+x.dataset.tm][x.dataset.tk] = x.value;
+  else if (x.dataset.tl) { const m = TEAM_EDIT.members[+x.dataset.tm]; m.licenses = m.licenses || {}; m.licenses[x.dataset.tl] = x.value; }
+});
+document.addEventListener('click', async e => {
+  const b = e.target.closest('#teamsCard [data-editteam], #teamsCard button'); if (!b) return;
+  if (b.dataset.editteam) { const t = (S.teams || []).find(x => x.id === b.dataset.editteam); TEAM_EDIT = t ? JSON.parse(JSON.stringify(t)) : { name: '', brokerage: '', members: [{ licenses: {} }] }; return renderTeams(); }
+  if (b.id === 'tAdd') { TEAM_EDIT.members.push({ licenses: {} }); return renderTeams(); }
+  if (b.dataset.tmdel !== undefined) { TEAM_EDIT.members.splice(+b.dataset.tmdel, 1); return renderTeams(); }
+  if (b.id === 'tCancel') { TEAM_EDIT = null; return renderTeams(); }
+  if (b.id === 'tDel') { if (!confirm('Delete this team? Its files stay, they just aren\'t shared with the team any more.')) return; const r = await call('deleteTeam', { id: TEAM_EDIT.id }); S.teams = r.teams; TEAM_EDIT = null; return showHome(); }
+  if (b.id === 'tSave') { b.disabled = true; try { const r = await call('saveTeam', { team: TEAM_EDIT }); S.teams = r.teams; S.contacts = r.contacts; refreshContacts(); TEAM_EDIT = null; toast('Team saved'); showHome(); } catch (err) { b.disabled = false; toast(err.message, true); } }
+});
 document.addEventListener('click', async e => {
   if (!e.target.closest('#asGo')) return;
   const email = $('#asAgent').value; if (!email) return toast('Choose an agent first', true);
@@ -552,6 +592,9 @@ function otherConts() { return ((F.contractTerms || {}).otherContingencies || []
 function feeNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; }
 function feeUnit(u) { return /\$|dollar|flat/i.test(String(u || '')) ? '$' : '%'; }
 function oursAs(role) { return (F.parties || []).some(p => p.ours && p.role === role); }
+// Is ARC working the buyer side on this file? (rep, our agent, a buyer agreement on file, or a team/agent buyer agent)
+function isBuyerSide() { return /Buyer side|Both/.test(F.rep || '') || oursAs('Buyer agent') || !!F.buyerAgreementDocId || !!(F.buyerAgreementFee && feeNum(F.buyerAgreementFee.amount) != null); }
+function isSellerSide() { return /Seller side|Both/.test(F.rep || '') || oursAs('Listing agent') || !!(F.listingBuyerFee && feeNum(F.listingBuyerFee.amount) != null); }
 function feeBasis(v) { v = String(v || '').toLowerCase(); return /net/.test(v) ? 'net' : /gross/.test(v) ? 'gross' : ''; }
 function psBasis() { const ct = F.contractTerms || {}, s = ct.buyerFee || {}; return feeBasis(s.basis) || (/\bnet\b/i.test(ct.buyerFeeText || '') ? 'net' : /gross/i.test(ct.buyerFeeText || '') ? 'gross' : ''); }
 function waiveWord(w) { return /^Yes/.test(w || '') ? 'Waived' : /^Partly/.test(w || '') ? 'partly waived' : /^No/.test(w || '') ? 'buyer pays' : 'who pays?'; }
@@ -569,7 +612,7 @@ function feeShort() {
   const ga = diff(a), basisGap = a.amount && pb === 'net' && feeBasis(a.basis) === 'gross';
   if (ga > 0) parts.push('Buyer ' + show(s.unit, ga) + (basisGap ? ' + net/gross difference' : '') + ' ' + waiveWord(a.waive));
   else if (basisGap) parts.push('Buyer net/gross difference ' + waiveWord(a.waive));
-  if (feeNum(a.amount) == null && oursAs('Buyer agent')) parts.push('Buyer agreement fee? (add it in File info → Fees)');
+  if (feeNum(a.amount) == null && isBuyerSide()) parts.push('Buyer agreement fee? (add it in File info → Fees)');
   const gl = diff(l);
   if (gl < 0) { const c = l.cover || ''; parts.push(/reducing/.test(c) ? 'Listing firm ' + show(s.unit, -gl) : /Seller agreed/.test(c) ? '(seller agreed to ' + show(s.unit, s.amount) + ')' : '(' + show(s.unit, -gl) + ' over listing: who pays?)'); }
   return parts.join(' · ');
@@ -613,9 +656,9 @@ function renderAgent() {
         ? [['Under agreement (agent)', uaAgent], pns, ['Listing: from the agent', fromAgent], ['From the listing agreement', F.listingRows || []]]
         : [['From the agent', fromAgent], pns])).filter(g => g[1].length);
   const el = $('#cAgent');
-  const buyerSide = /Buyer side|Both/.test(F.rep || '') || !!(F.buyerAgreementFee && F.buyerAgreementFee.amount) || !!F.buyerAgreementDocId || oursAs('Buyer agent'),
-    sellerSide = /Seller side|Both/.test(F.rep || '') || !!(F.listingBuyerFee && F.listingBuyerFee.amount) || oursAs('Listing agent');
-  const fees = isUA() && (buyerSide || sellerSide);
+  let buyerSide = isBuyerSide(), sellerSide = isSellerSide();
+  if (!buyerSide && !sellerSide) buyerSide = sellerSide = true;   // side not known yet: offer both
+  const fees = isUA();
   if (!groups.length && !fees) { el.hidden = true; return; }
   el.hidden = false;
   const ff = (path, ph, w) => '<input class="i" data-path="' + path + '" value="' + esc(getPath(F, path) || '') + '" placeholder="' + ph + '" style="width:' + (w || 64) + 'px;padding:5px 7px">';
@@ -652,6 +695,7 @@ function renderTodo() {
 function renderFileInfo() {
   $('#cFile').innerHTML = '<div class="ch"><h3>File details</h3><span class="sub">Created ' + esc(fmt(F.created, true)) + '</span></div><div class="cb stack">' +
     '<label class="f">Status<select class="i" data-path="status">' + opt(S.settings.statuses || [], F.status) + '</select></label>' +
+    ((S.teams || []).length ? '<label class="f">Agent team<select class="i" data-path="team"><option value="">— not a team file —</option>' + (S.teams || []).map(t => '<option value="' + esc(t.id) + '"' + (F.team === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>').join('') + '</select></label>' : '') +
     '<div class="row2"><label class="f">Service<select class="i" data-path="service"><option></option>' + opt(SERVICES, F.service) + '</select></label>' +
     '<label class="f">Representation<select class="i" data-path="rep"><option></option>' + opt(REPS, F.rep) + '</select></label></div>' +
     fld('Property address', 'property.address') +
@@ -705,6 +749,9 @@ function renderCal() {
   $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '', src: 'Lynne' }); renderCal(); changed(); };
 }
 
+function fileState() { return String((F.property || {}).state || '').trim().toUpperCase(); }
+// The agent's license for the property's state, from their contact (agents can hold NH, ME and MA licenses)
+function partyLicense(p) { const em = String(p.email || '').toLowerCase(), c = S.contacts.find(x => (em && String(x.email || '').toLowerCase() === em) || (!em && x.name === p.name)); return (c && c.licenses && c.licenses[fileState()]) || ''; }
 function renderParties() {
   const roles = S.settings.roles || [];
   $('#cParties').innerHTML = '<div class="ch"><h3>Parties</h3><span class="sub">Saved to your contacts automatically</span></div><div class="cb">' +
@@ -717,6 +764,7 @@ function renderParties() {
         '<div class="row2"><input class="i" list="dlEmails" type="email" data-party="' + i + '" data-pf="email" value="' + esc(p.email) + '" placeholder="Email">' +
         '<input class="i" data-party="' + i + '" data-pf="phone" value="' + esc(p.phone) + '" placeholder="Phone"></div>' +
         '<input class="i" data-party="' + i + '" data-pf="company" value="' + esc(p.company) + '" placeholder="Company / brokerage">' +
+        (/agent/i.test(p.role) ? '<input class="i" data-party="' + i + '" data-pf="license" value="' + esc(p.license || partyLicense(p)) + '" placeholder="' + esc(fileState() || 'State') + ' license #">' : '') +
         '<label class="small muted" style="display:flex;gap:6px;align-items:center"><input type="checkbox" data-party="' + i + '" data-pf="reminders"' + (p.reminders !== false ? ' checked' : '') + '> Gets deadline reminders</label>' +
       '</div></div>').join('') || '<div class="empty">No one on this file yet.</div>') +
     '<div class="btns" style="margin-top:6px"><select class="i" id="newRole" style="width:auto">' + opt(roles, 'Buyer') + '</select><button class="btn" id="addParty">+ Add person</button></div></div>';

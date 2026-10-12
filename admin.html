@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p38';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p39';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -667,7 +667,10 @@ function feeGaps(terms) {
 }
 function renderAgent() {
   const ct = F.contractTerms || {};
-  const fromAgent = (F.intake || []).filter(r => r.group !== 'Under agreement'), uaAgent = (F.intake || []).filter(r => r.group === 'Under agreement');
+  // fee answers live in the editable Fees block on under-agreement files, so they aren't repeated below it
+  const FEE_ROWS = ['Buyer agency agreement fee', 'Buyer agent comp in listing agreement', 'If buyer agent asked for more', 'Waiving the difference?'];
+  const rowsOf = list => isUA() ? list.filter(r => FEE_ROWS.indexOf(r.label) < 0) : list;
+  const fromAgent = rowsOf((F.intake || []).filter(r => r.group !== 'Under agreement')), uaAgent = rowsOf((F.intake || []).filter(r => r.group === 'Under agreement'));
   const pns = ['From the P&S', ct.concessions ? [{ label: 'Concessions', value: ct.concessions }] : []];
   const listingFirst = !isUA();
   const groups = (listingFirst

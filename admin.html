@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p45';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p46';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -511,6 +511,32 @@ function renderPending() {
 }
 
 function people(role) { return (F.parties || []).filter(p => p.role === role); }
+// Same person entered twice (e.g. "Val Shelton" and "Valerie Shelton") → one entry, keeping the fuller name, company and contact details
+function samePerson(a, b) {
+  const w = x => String(x.name || '').trim().toLowerCase().split(/\s+/), A = w(a), B = w(b);
+  if (A.length < 2 || B.length < 2 || A[A.length - 1] !== B[B.length - 1]) return false;
+  return A[0].indexOf(B[0]) === 0 || B[0].indexOf(A[0]) === 0;
+}
+function dedupePeople(list) {
+  const out = [];
+  list.forEach(p => { const q = out.find(o => samePerson(o, p));
+    if (!q) { out.push(Object.assign({}, p)); return; }
+    ['name', 'company'].forEach(k => { if (String(p[k] || '').length > String(q[k] || '').length) q[k] = p[k]; });
+    ['email', 'phone'].forEach(k => { if (!q[k] && p[k]) q[k] = p[k]; }); });
+  return out;
+}
+function coKey(c) { return String(c || '').toLowerCase().replace(/[.,]/g, '').replace(/\b(inc|llc|ltd|corp|co|company)\b/g, '').replace(/\s+/g, ' ').trim(); }
+function teamish(name) { const n = String(name || '').toLowerCase().replace(/&/g, 'and'); return /\b(group|team)\b/.test(n) || (S.teams || []).some(t => String(t.name || '').toLowerCase().replace(/&/g, 'and') === n); }
+// "Foss and Russell Group, Kate & Jennifer, BHHS Verani Realty"; one entry per brokerage, team name first
+function agentsText(role, withContacts) {
+  const groups = [];
+  dedupePeople(people(role)).forEach(p => { const k = coKey(p.company); let g = groups.find(x => x.k === k); if (!g) { g = { k, company: p.company || '', list: [] }; groups.push(g); }
+    if (String(p.company || '').length > g.company.length) g.company = p.company; g.list.push(p); });
+  return groups.map(g => {
+    const list = g.list.slice().sort((a, b) => teamish(b.name) - teamish(a.name));
+    return list.map(p => p.name + (withContacts && !teamish(p.name) && (p.email || p.phone) ? ' (' + [p.email, p.phone].filter(Boolean).join(' · ') + ')' : '')).join(', ') + (g.company ? ', ' + g.company : '');
+  }).join('; ');
+}
 function names(role) { return joinNames(people(role).map(p => p.name)); }
 
 function renderSummary() {
@@ -533,7 +559,8 @@ function renderSummary() {
     '<div class="ch"><h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<div class="sumlines">' +
       line('Buyer', F.buyers || names('Buyer')) + line('Seller', F.sellers || names('Seller')) +
-      line('Listing agent', agentLine('Listing agent')) + line('Buyer\'s agent', agentLine('Buyer agent')) +
+      line('Listing agent', agentsText('Listing agent')) + line('Buyer\'s agent', agentsText('Buyer agent')) +
+      line('Title / attorney', agentsText('Title / attorney')) + line('Lender', agentsText('Lender')) +
       line('Co-broke fee', feeShort()) + line('Price', p.price ? money(p.price) : '') +
       'Contingencies: <b>' + esc(cont.concat(otherConts()).join(', ') || 'None') + '</b>' +
     '</div></div>';
@@ -875,8 +902,7 @@ function summaryData() {
   const p = F.property || {}, ct = F.contractTerms || {};
   const cont = TERM_KEYS.filter(([k]) => k !== 'deposit' && F.terms[k] !== false).map(t => t[1]);
   const who = [['Buyer', F.buyers || names('Buyer')], ['Seller', F.sellers || names('Seller')],
-    ['Listing agent', people('Listing agent').map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ')],
-    ['Buyer\'s agent', people('Buyer agent').map(a => a.name + (a.company ? ', ' + a.company : '')).join('; ')],
+    ['Listing agent', agentsText('Listing agent')], ['Buyer\'s agent', agentsText('Buyer agent')],
     ['Title / attorney', names('Title / attorney')], ['Lender', names('Lender')],
     ['Price', p.price ? money(p.price) : ''], ['Co-broke fee', ct.buyerFeeText], ['Contingencies', cont.concat(otherConts()).join(', ') || 'None']].filter(r => r[1]);
   // Contract dates only (no listing dates, no ARC's own reminders), in date order, closing always last
@@ -940,10 +966,10 @@ function whoIsWho(withContacts) {
   return [
     'Buyer: ' + (F.buyers || names('Buyer') || 'TBD'),
     'Seller: ' + (F.sellers || names('Seller') || 'TBD'),
-    line('Listing agent', people('Listing agent')),
-    line("Buyer's agent", people('Buyer agent')),
-    line('Title / attorney', people('Title / attorney')),
-    line('Lender', people('Lender')),
+    agentsText('Listing agent') ? 'Listing agent: ' + agentsText('Listing agent', withContacts) : '',
+    agentsText('Buyer agent') ? "Buyer's agent: " + agentsText('Buyer agent', withContacts) : '',
+    line('Title / attorney', dedupePeople(people('Title / attorney'))),
+    line('Lender', dedupePeople(people('Lender'))),
   ].filter(Boolean).join('\n');
 }
 function datesBlock() {

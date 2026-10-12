@@ -86,8 +86,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
         <select name="clientSide" required><option value="">Choose…</option><option>Buyer</option><option>Seller</option><option>Both</option></select></label>
       <label class="c4" data-once>Transaction platform <span class="req">*</span>
         <select name="platform" required><option value="">Choose…</option><option>Dotloop</option><option>SkySlope</option><option>Lone Wolf / Transact</option><option>Other</option></select></label>
-      <label class="c12" data-loop>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
-        <select name="onLoop" required><option value="">Choose…</option><option>Yes</option><option>Not yet</option></select></label>
+      <label class="c12" data-loop>Have you added lynne.pinette@verani.com to the loop? <span class="req">*</span>
+        <select name="onLoop" required><option value="">Choose…</option><option>Yes</option><option>Not yet</option></select>
+        <span class="hint" style="margin:4px 0 0;font-weight:400" data-show="onLoop:Not yet">No problem, send it anyway. Please add lynne.pinette@verani.com when you can; I'll remind you.</span></label>
     </div>
   </section>
 
@@ -98,7 +99,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
       <label class="c4">Town <span class="req">*</span><input name="town" required></label>
       <label class="c2">State <span class="req">*</span><select name="state" required><option value="">Choose…</option><option>NH</option><option>ME</option><option>MA</option></select></label>
       <label class="c3">MLS # (if known)<input name="mls"></label>
-      <label class="c3">List or sale price<input name="price" inputmode="numeric"></label>
+      <label class="c3" data-listing-only>List price<input name="price" inputmode="numeric"></label>
       <label class="c3">Property type<select name="propType"><option></option><option>Single family</option><option>Condo</option><option>Multi-family</option><option>Mobile home</option><option>Land</option><option>Other</option></select></label>
       <label class="c3">Condo / HOA?<select name="hoa"><option></option><option>Yes</option><option>No</option></select></label>
     </div>
@@ -196,11 +197,9 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
   </section>
 
   <section class="card" data-for="ua">
-    <h2>7 · Contract &amp; dates</h2>
-    <p class="hint">Rough dates are fine — I pull the exact deadlines from the executed P&amp;S.</p>
+    <h2>7 · Deposit &amp; fees</h2>
+    <p class="hint">Dates and price come straight from the executed P&amp;S, so I don't need them here.</p>
     <div class="grid">
-      <label class="c3">Effective date (if under agreement)<input name="effDate" type="date"></label>
-      <label class="c3">Closing date (if known)<input name="closeDate" type="date"></label>
       <label class="c6">How is the earnest money deposit being paid? <span class="req">*</span>
         <select name="depMethod" required><option value="">Choose…</option><option>DepositLink — Lynne to send the request</option><option>Earnnest — Lynne to send the request</option><option>Wire</option><option>Personal check — mailed to Verani</option><option>Personal check — dropped off at a Verani office</option><option>Held by the other brokerage or an attorney</option><option>Not sure yet</option></select></label>
       <label class="c6" data-show="depMethod:dropped off">Which office? <span class="req">*</span><select name="depOffice" required><option value="">Choose…</option><option>Portsmouth</option><option>Exeter</option><option>Biddeford</option><option>Andover</option><option>Haverhill</option><option>Methuen</option><option>Other Verani office</option></select></label>
@@ -272,7 +271,7 @@ let TOKEN = ''; try { TOKEN = sessionStorage.getItem('arcAgentToken') || localSt
 function onceQuestions(a) {
   if (a.platform) form.platform.value = a.platform;
   // platform: asked once per agent. "Added to the loop": asked on every new file, not when adding a P&S to a listing ARC already has.
-  document.querySelectorAll('[data-once]').forEach(el => { el.hidden = !!a.platform; });
+  document.querySelectorAll('[data-once]').forEach(el => { el.hidden = !!(a.platform || a.known); });   // returning clients aren't asked again
   document.querySelectorAll('[data-loop]').forEach(el => { el.hidden = !!QS.get('listing'); });
 }
 async function startPortal() {
@@ -350,6 +349,7 @@ function showSections() {
   document.getElementById('agListingBox').hidden = !(ua && /Seller|Both/.test(cs) && form.rep.value !== 'Transaction Facilitator');
   document.getElementById('agBuyerBox').hidden = !(ua && /Buyer|Both/.test(cs) && form.rep.value !== 'Transaction Facilitator');
   if (form.depOffice.closest('label').hidden) form.depOfficeOther.closest('label').hidden = true;
+  document.querySelectorAll('[data-listing-only]').forEach(el => { el.hidden = !listing; });   // under agreement: price comes from the P&S
   let n = 0;
   form.querySelectorAll('section.card').forEach(s => { if (!s.hidden) { n++; const h = s.querySelector('h2'); h.textContent = h.textContent.replace(/^\d+/, n); } });
   document.getElementById('dropTitle').textContent = listing ? 'Add any documents (optional)' : 'Add the executed P&S';

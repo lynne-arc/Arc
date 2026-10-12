@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p43';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p45';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -524,7 +524,10 @@ function renderSummary() {
     .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
     .sort((a, b) => dateOrder(a.date, b.date, a.k, b.k));
   const basis = (F.reading || {}).basis || {};
-  const addNote = k => { const b = String(basis[k] || ''); return k && /addend|amend|counter/i.test(b) ? '<div style="font-size:12px;color:var(--amber,#9A6B00)">' + esc(b.length > 70 ? b.slice(0, 70) + '…' : b) + '</div>' : ''; };
+  // short form, e.g. "Add 1 · Extn from 9/18"
+  const shortBasis = b => { if (/^(Add|Amd|Ctr)\s*\d/i.test(String(b))) return String(b).slice(0, 60); b = String(b || '').split(/[.;]\s/)[0].replace(/\baddendum\s*#?/i, 'Add ').replace(/\bamendment\s*#?/i, 'Amd ').replace(/\bcounter-?\s?offer\s*#?/i, 'Ctr ')
+      .replace(/\bextended\b|\bextension\b/i, 'Extn').replace(/\bchanged\b/i, 'Chg').replace(/\s*:\s*/, ' · ').replace(/\s+/g, ' ').trim(); return b.length > 40 ? b.slice(0, 40) + '…' : b; };
+  const addNote = k => { const b = String(basis[k] || ''); return k && /addend|amend|counter/i.test(b) ? '<div style="font-size:12px;color:var(--amber,#9A6B00)">' + esc(shortBasis(b)) + '</div>' : ''; };
   const rows = items.map(x => '<tr' + (ua && afterClosing(x.date, x.k) ? ' style="color:var(--red)" title="This date is after closing"' : '') + '><td>' + esc(x.label) + (ua && afterClosing(x.date, x.k) ? ' <b class="small">· after closing</b>' : '') + addNote(x.k) + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
   $('#cDeal').innerHTML =
     '<div class="ch"><h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +

@@ -379,7 +379,7 @@ async function showHome() {
 }
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
-const PAGE_VERSION = 'p46';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
+const PAGE_VERSION = 'p47';   // bump with every dashboard update, so Lynne can see if her browser has the latest page
 let TEAM_EDIT = null;
 function sharedNote(t) {
   const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
@@ -898,13 +898,44 @@ function renderDocs() {
     catch (err) { $('#docMsg').textContent = ''; toast(err.message, true); }
   };
 }
-function summaryData() {
-  const p = F.property || {}, ct = F.contractTerms || {};
+/* ---------- Fee notes and who may see them ----------
+   base    → everyone: what the contract commits the seller to pay the buyer's brokerage
+   buyer   → buyer, title, lender (never the listing agent or seller): the buyer owes the difference under their buyer agreement
+   listing → seller, title (never the buyer's agent, buyer or lender): the listing firm is reducing its fee to cover a higher co-broke */
+const FEE_AUDIENCE = { all: ['base'], agents: ['base'], buyerClient: ['base', 'buyer'], sellerClient: ['base', 'listing'], title: ['base', 'buyer', 'listing'], lender: ['base', 'buyer'] };
+function feeNotes() {
+  const ct = F.contractTerms || {}, s = ct.buyerFee, out = {};
+  const show = (u, v) => feeUnit(u) === '$' ? money(v) : String(v).replace(/%$/, '') + '%';
+  const brk = (dedupePeople(people('Buyer agent')).find(p => p.company) || {}).company || '';
+  const pb = psBasis(), a = F.buyerAgreementFee || {}, l = F.listingBuyerFee || {}, basis = pb || feeBasis(a.basis) || feeBasis(l.basis);
+  if (s && feeNum(s.amount) != null) out.base = 'Seller pays ' + show(s.unit, s.amount) + (basis ? ' of ' + basis + ' price' : '') + ' to buyer\'s brokerage' + (brk ? ' (' + brk + ')' : '') + ' at closing';
+  else if (ct.buyerFeeText) out.base = ct.buyerFeeText;
+  if (s && feeNum(s.amount) != null) {
+    const diff = x => (!x || feeNum(x.amount) == null || feeUnit(x.unit) !== feeUnit(s.unit)) ? 0 : Math.round((feeNum(x.amount) - feeNum(s.amount)) * 100) / 100;
+    const ga = diff(a), w = a.waive || '', netGap = pb === 'net' && feeBasis(a.basis) === 'gross';
+    if ((ga > 0 || netGap) && !/^Yes|^Not applicable/.test(w)) {
+      const what = ga > 0 ? show(s.unit, ga) + (netGap ? ' plus the net/gross difference' : '') : 'the difference between ' + show(s.unit, s.amount) + ' of net and of gross price';
+      out.buyer = /^Partly/.test(w) ? 'Buyer pays part of ' + what + ' to ' + (brk || 'their brokerage') + ' at closing (amount to be confirmed)'
+        : /^No/.test(w) ? 'Buyer pays ' + what + ' to ' + (brk || 'their brokerage') + ' at closing, under their buyer agency agreement'
+        : 'Buyer may owe ' + what + ' under their buyer agency agreement (to be confirmed)';
+    }
+    const gl = diff(l);
+    if (gl < 0 && /reducing/.test(l.cover || '')) out.listing = 'Listing firm reduces its fee by ' + show(s.unit, -gl) + ' to cover the buyer agent\'s compensation';
+  }
+  return out;
+}
+function feeBlock(aud) { const r = feeRows(aud); return r.length ? '\n\nFees\n' + r.map(x => x[0] + ': ' + x[1]).join('\n') : ''; }
+function feeRows(aud) { const n = feeNotes(), keys = FEE_AUDIENCE[aud || 'all'] || ['base'];
+  return [['Co-broke fee', keys.indexOf('base') > -1 ? n.base : ''], ['Buyer\'s share', keys.indexOf('buyer') > -1 ? n.buyer : ''], ['Listing fee', keys.indexOf('listing') > -1 ? n.listing : '']].filter(r => r[1]); }
+// which fee notes the clients email may carry
+function clientAudience() { return F.rep === 'Buyer side' ? 'buyerClient' : F.rep === 'Seller side' ? 'sellerClient' : (clientRoles().length === 1 ? (clientRoles()[0] === 'Buyer' ? 'buyerClient' : 'sellerClient') : 'all'); }
+function summaryData(aud) {
+  const p = F.property || {};
   const cont = TERM_KEYS.filter(([k]) => k !== 'deposit' && F.terms[k] !== false).map(t => t[1]);
   const who = [['Buyer', F.buyers || names('Buyer')], ['Seller', F.sellers || names('Seller')],
-    ['Listing agent', agentsText('Listing agent')], ['Buyer\'s agent', agentsText('Buyer agent')],
-    ['Title / attorney', names('Title / attorney')], ['Lender', names('Lender')],
-    ['Price', p.price ? money(p.price) : ''], ['Co-broke fee', ct.buyerFeeText], ['Contingencies', cont.concat(otherConts()).join(', ') || 'None']].filter(r => r[1]);
+    ['Listing agent', agentsText('Listing agent', true)], ['Buyer\'s agent', agentsText('Buyer agent', true)],
+    ['Title / attorney', agentsText('Title / attorney', true)], ['Lender', agentsText('Lender', true)],
+    ['Price', p.price ? money(p.price) : '']].concat(feeRows(aud)).concat([['Contingencies', cont.concat(otherConts()).join(', ') || 'None']]).filter(r => r[1]);
   // Contract dates only (no listing dates, no ARC's own reminders), in date order, closing always last
   const dates = DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, l, d: F.dates[k] }))
     .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))
@@ -913,8 +944,8 @@ function summaryData() {
   return { who, dates };
 }
 // A plain, table-only version for the PDF attached to emails (Google's PDF maker ignores modern layout)
-function summaryPdfHtml() {
-  const { who, dates } = summaryData(), navy = '#2E3466', grey = '#5E6676', gold = '#B5964F';
+function summaryPdfHtml(aud) {
+  const { who, dates } = summaryData(aud), navy = '#2E3466', grey = '#5E6676', gold = '#B5964F';
   const tr = (r, last) => '<tr><td style="padding:4px 0;border-bottom:1px solid #E3E5EA;color:' + grey + ';width:38%;vertical-align:top">' + esc(r[0]) + '</td><td style="padding:4px 0;border-bottom:1px solid #E3E5EA;vertical-align:top' + (last ? ';font-weight:bold;color:' + navy : '') + '">' + esc(r[1]) + '</td></tr>';
   const h2 = t => '<div style="font-size:11px;letter-spacing:2px;color:' + grey + ';font-weight:bold;margin:16px 0 4px">' + t + '</div>';
   return '<html><head><meta charset="utf-8"><style>@page{size:8.5in 11in;margin:0.5in 0.6in}</style></head><body style="font-family:Georgia,serif;font-size:13px;color:#1C2333;margin:0">' +
@@ -1018,7 +1049,7 @@ function buildEmail(kind) {
     }
     return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you are under agreement, here is what happens next',
       body: 'Hi ' + greet + ',\n\nCongratulations — ' + where() + ' is officially under agreement! My name is Lynne, and I am the transaction coordinator working with ' + (joinNames(ours.map(p => first(p.name))) || 'your agent') + ' to keep everything on track to closing.\n\n' +
-        'Important dates\n' + datesBlock() + '\n\n' +
+        'Important dates\n' + datesBlock() + feeBlock(clientAudience()) + '\n\n' +
         (steps.length ? 'What happens next\n' + steps.sort((a, b) => dateOrder(F.dates[a[0]], F.dates[b[0]], a[0], b[0])).map((s, i) => (i + 1) + '. ' + s[1]).join('\n') + '\n\n' : '') +
         'IMPORTANT — wire fraud: I will never send or change wiring instructions by email. Before you send any money, always call your closing attorney or title company at a phone number you already know.\n\n' +
         'Please add these dates to your calendar, and reply with any questions — no question is too small.' + SIGNATURE };
@@ -1029,13 +1060,13 @@ function buildEmail(kind) {
     const fin = [F.dates.financing && termOn('financing') ? 'Loan commitment due: ' + fmt(F.dates.financing, true) : '', F.dates.appraisal && termOn('appraisal') ? 'Appraisal due: ' + fmt(F.dates.appraisal, true) : ''].filter(Boolean);
     return { to: emailsOf(lt), cc: agentsCc, subject: tag() + ': under agreement',
       body: hi + '\n\n' + where() + ' is under agreement and I\'m coordinating the transaction. Here is everyone on the deal and the key dates.' + (fin.length ? '\n\nYour dates\n' + fin.join('\n') : '') + '\n\n' +
-        'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
+        'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() + feeBlock('lender') +
         '\n\nPlease let me know as soon as the appraisal is in and the commitment is issued, and copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
   }
   const tt = partiesByRoles(['Title / attorney']), hi = tt.length ? 'Hello ' + joinNames(tt.map(p => first(p.name))) + ',' : 'Hello,';
   return { to: emailsOf(tt), cc: agentsCc, subject: tag() + ': under agreement',
     body: hi + '\n\n' + where() + ' is under agreement. Here is everyone on the deal and how to reach them, along with the key dates. Please confirm receipt and let me know what you need from us.\n\n' +
-      'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() +
+      'Who is who\n' + whoIsWho(true) + '\n\nImportant dates\n' + datesBlock() + feeBlock('title') +
       '\n\nPlease copy me (' + OWNER + ') on all correspondence.' + SIGNATURE };
 }
 const EMAIL_META = {
@@ -1177,7 +1208,7 @@ fv.addEventListener('click', async e => {
       await flush();
       const att = F.contractFileId && E[kind].attach !== false;
       const r = await call('draft', Object.assign({ id: F.id, kind, to: v.to, cc: v.cc, subject: v.subject, body: v.body },
-        att ? { summaryHtml: summaryPdfHtml(), summaryName: 'Executed Contract Summary - ' + ((F.property || {}).address || F.id) + '.pdf' } : {}));
+        att ? { summaryHtml: summaryPdfHtml({ agents: 'agents', clients: clientAudience(), title: 'title', lender: 'lender' }[kind] || 'all'), summaryName: 'Executed Contract Summary - ' + ((F.property || {}).address || F.id) + '.pdf' } : {}));
       F.emails = r.file.emails; F.checklist = r.file.checklist; renderLog(); renderCheck(); renderEmail(kind);
       toast(S.settings.testMode ? 'Test draft saved to your Gmail Drafts' : 'Draft saved — review it in Gmail Drafts and send');
     } catch (err) { toast(err.message, true); }

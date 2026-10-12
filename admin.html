@@ -45,6 +45,8 @@ a{color:var(--navy2)}
 @media (max-width:1250px){.grid3{grid-template-columns:minmax(300px,370px) minmax(0,1fr)}.grid3>.col.right{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;align-items:start}}
 @media (max-width:900px){.grid3{grid-template-columns:1fr}.grid3>.col.right{display:flex}}
 .col.right{position:sticky;top:76px}
+.viewer{position:sticky;top:76px;z-index:5;box-shadow:0 8px 30px rgba(30,40,80,.12)}
+.viewer iframe{display:block;width:100%;height:calc(100vh - 150px);min-height:520px;border:0;background:#F1F2F4}
 @media (max-width:1250px){.col.right{position:static}}
 .col{display:flex;flex-direction:column;gap:16px;min-width:0}
 @media (max-width:900px){.grid{grid-template-columns:1fr}.top select{min-width:0;flex:1}}
@@ -398,6 +400,7 @@ function renderFile() {
         '<section class="card t-sand" id="cFile"></section>' +
       '</div>' +
       '<div class="col">' +
+        '<section class="card t-blue viewer" id="cViewer" hidden></section>' +
         '<section class="card t-green" id="cDocs"></section>' +
         '<section class="card email agents" id="e_agents"></section>' +
         '<section class="card email clients" id="e_clients"></section>' +
@@ -448,8 +451,8 @@ function renderSummary() {
       'Contingencies: <b>' + esc(cont.join(', ') || 'None') + '</b>' +
     '</div>' +
     (contract ? '<div class="cfile"><div><div class="n">' + esc(contract.name) + '</div><div class="m">' + esc(F.status) + (F.updated ? ' · updated ' + esc(new Date(F.updated).toLocaleDateString('en-US', {month:'short', day:'numeric'})) : '') + '</div></div>' +
-      '<div class="btns"><a class="btn" href="' + esc(contract.url) + '" target="_blank" rel="noopener">View contract</a><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
-    (function () { const L = DOCS.find(x => x.id === F.listingDocId); return L ? '<div class="cfile"><div><div class="n">' + esc(L.name) + '</div><div class="m">Listing agreement</div></div><div class="btns"><a class="btn" href="' + esc(L.url) + '" target="_blank" rel="noopener">View</a><button class="btn ghost" id="rereadListing">Read again</button></div></div>' : ''; })() +
+      '<div class="btns"><button class="btn" data-view="' + esc(contract.id) + '">View contract</button><button class="btn ghost" id="rereadBtn">Read again</button></div></div>' : '') +
+    (function () { const L = DOCS.find(x => x.id === F.listingDocId); return L ? '<div class="cfile"><div><div class="n">' + esc(L.name) + '</div><div class="m">Listing agreement</div></div><div class="btns"><button class="btn" data-view="' + esc(L.id) + '">View</button><button class="btn ghost" id="rereadListing">Read again</button></div></div>' : ''; })() +
     (rows ? '<table class="dates"><tr><th>Item</th><th style="text-align:right">Date</th></tr>' + rows + '</table>' : '<div class="empty">No dates yet. Read the contract or add them in the Calendar.</div>') +
     '</div>';
   const rl = $('#rereadListing');
@@ -473,6 +476,16 @@ function autoDates() {
   if (/Water|Sewer/.test(u.waterSewer || '')) out.push({ label: 'Final ' + u.waterSewer.replace(/ only/, '').toLowerCase() + ' reading', date: before(14), note: '2 weeks before closing' });
   if (u.gas === 'Yes') out.push({ label: 'Gas meter reading', date: before(14), note: '2 weeks before closing' });
   return out;
+}
+function openViewer(id) {
+  const d = DOCS.find(x => x.id === id), v = $('#cViewer');
+  if (!d || !v) return;
+  v.innerHTML = '<div class="ch"><h3 style="text-transform:none;letter-spacing:0;font-size:13px">' + esc(d.name.replace(/^\d{4}-\d{2}-\d{2} \d{4} · /, '')) + '</h3>' +
+    '<div class="btns"><a class="btn" href="' + esc(d.url) + '" target="_blank" rel="noopener">Open in new tab</a><button class="btn primary" id="closeViewer">Close</button></div></div>' +
+    '<iframe title="Document" src="https://drive.google.com/file/d/' + encodeURIComponent(d.id) + '/preview?authuser=' + encodeURIComponent(OWNER) + '"></iframe>';
+  v.hidden = false;
+  $('#closeViewer').onclick = () => { v.hidden = true; v.innerHTML = ''; };
+  v.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function fmtShort(s) { if (!s) return ''; const p = String(s).split('-').map(Number); return p[1] + '/' + p[2] + '/' + String(p[0]).slice(2); }
 
@@ -585,7 +598,7 @@ function renderParties() {
 function renderDocs() {
   $('#cDocs').innerHTML = '<div class="ch"><h3>Documents</h3><span class="sub">Drive › Transactions › ' + esc(fileName()) + '</span></div><div class="cb">' +
     '<div class="cfile" style="margin-top:0"><div><div class="n">Executed Contract Summary</div><div class="m">The Important Dates page, ready to send to anyone on the deal</div></div><button class="btn" id="ecsBtn">Download</button></div>' +
-    (DOCS.length ? DOCS.map(d => '<div class="doc"><a href="' + esc(d.url) + '" target="_blank" rel="noopener">' + esc(d.name) + '</a><span class="chip">' + esc(d.group) + '</span></div>').join('') : '<div class="empty">No documents yet.</div>') +
+    (DOCS.length ? DOCS.map(d => '<div class="doc"><a href="#" data-view="' + esc(d.id) + '">' + esc(d.name) + '</a><span class="chip">' + esc(d.group) + '</span></div>').join('') : '<div class="empty">No documents yet.</div>') +
     '<div class="btns" style="margin-top:10px"><select class="i" id="docGroup" style="width:auto">' + opt(DOC_GROUPS, 'ARC internal') + '</select>' +
     '<label class="btn">Upload<input type="file" id="docIn" hidden></label><span class="small faint" id="docMsg"></span></div></div>';
   $('#ecsBtn').onclick = contractSummary;
@@ -785,6 +798,7 @@ function onEdit(e) {
 }
 fv.addEventListener('click', async e => {
   const t = e.target;
+  const vw = t.closest('[data-view]'); if (vw) { e.preventDefault(); openViewer(vw.dataset.view); return; }
   if (t.dataset.delparty !== undefined) { F.parties.splice(+t.dataset.delparty, 1); renderParties(); changed(); }
   else if (t.dataset.ours !== undefined) { const p = F.parties[+t.dataset.ours]; p.ours = !p.ours; renderParties(); changed(); }
   else if (t.dataset.delcustom !== undefined) { F.custom.splice(+t.dataset.delcustom, 1); renderCal(); changed(); }

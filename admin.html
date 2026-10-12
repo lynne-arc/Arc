@@ -506,7 +506,7 @@ function doneToggle(key, n, what) { return n ? '<button class="btn ghost small s
 document.addEventListener('click', e => { const b = e.target.closest('[data-showdone]'); if (!b) return; const k = b.dataset.showdone; SHOW_DONE[k] = !SHOW_DONE[k]; ({ todo: renderTodo, check: renderCheck, cal: renderCal })[k](); });
 // A past date is "met" when its checklist item is ticked (or it has none)
 const MET_BY = { deposit: 'Deposit confirmed', inspection: 'Inspection completed', appraisal: 'Appraisal received', financing: 'Financing commitment received', closing: 'Closed' };
-function metState(k, date) { if (!date || date >= today()) return 'upcoming'; const lab = MET_BY[k]; if (!lab) return 'met'; const c = (F.checklist || []).find(x => x.label === lab); return !c || c.done ? 'met' : 'overdue'; }
+function metState(k, date) { if (!date || date >= today()) return 'upcoming'; const lab = MET_BY[k]; if (!lab || !checkApplies(lab)) return 'met'; const c = (F.checklist || []).find(x => x.label === lab); return !c || c.done ? 'met' : 'overdue'; }
 const DEP_METHODS = ['DepositLink — Lynne to send the request', 'Earnnest — Lynne to send the request', 'Wire', 'Personal check — mailed to Verani', 'Personal check — dropped off at a Verani office', 'Held by the other brokerage or an attorney', 'Not sure yet'];
 function depShort() { const d = F.depositMethod || {}, m = d.method || ''; if (!m) return '';
   return m.replace(/ — Lynne to send the request/, '').replace(/Personal check — mailed to Verani/, 'Check, mailed to Verani').replace(/Personal check — dropped off at a Verani office/, 'Check, drop-off' + (d.office ? ' ' + d.office : '')).replace(/Held by the other brokerage or an attorney/, 'Held elsewhere'); }
@@ -814,12 +814,16 @@ function renderLog() {
       : '<div class="empty">Drafts and reminders for this file will be listed here.</div>') + '</div>';
 }
 
+// Checklist items that only apply when that contingency is in the contract
+const CHECK_TERM = { 'Appraisal received': 'appraisal', 'Financing commitment received': 'financing', 'Inspection completed': 'inspection', 'Inspection resolved': 'inspection' };
+function checkApplies(label) { return !CHECK_TERM[label] || F.terms[CHECK_TERM[label]] !== false; }
 function renderCheck() {
-  const n = (F.checklist || []).filter(c => c.done).length;
+  let n = (F.checklist || []).filter(c => c.done).length;
   const row = ([c, i]) => '<label class="check' + (c.done ? ' done' : '') + '"><input type="checkbox" data-check="' + i + '"' + (c.done ? ' checked' : '') + '><span style="flex:1"><span class="l">' + esc(c.label) + '</span>' +
       (c.done && c.at ? '<div class="small faint">' + esc(new Date(c.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '</div>' : '') + '</span></label>';
-  const idx = (F.checklist || []).map((c, i) => [c, i]);
-  $('#cCheck').innerHTML = '<div class="ch"><h3>Checklist</h3><span class="sub">' + n + ' of ' + (F.checklist || []).length + ' done</span></div><div class="cb">' +
+  const idx = (F.checklist || []).map((c, i) => [c, i]).filter(([c]) => checkApplies(c.label)), total = idx.length;
+  n = idx.filter(([c]) => c.done).length;
+  $('#cCheck').innerHTML = '<div class="ch"><h3>Checklist</h3><span class="sub">' + n + ' of ' + total + ' done</span></div><div class="cb">' +
     idx.filter(([c]) => !c.done).map(row).join('') + (SHOW_DONE.check ? idx.filter(([c]) => c.done).map(row).join('') : '') + doneToggle('check', n, 'done') +
     '<div class="btns" style="margin-top:8px"><input class="i" id="newCheck" placeholder="Add a checklist item" style="flex:1"><button class="btn" id="addCheck">Add</button></div></div>';
   $('#addCheck').onclick = () => { const v = $('#newCheck').value.trim(); if (!v) return; F.checklist.push({ label: v, done: false, at: '' }); renderCheck(); changed(); };
@@ -841,7 +845,7 @@ function onEdit(e) {
     const val = el.type === 'checkbox' ? el.checked : el.value;
     if (getPath(F, el.dataset.path) === val) return;
     setPath(F, el.dataset.path, val);
-    if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') renderTerms();
+    if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') { renderTerms(); renderCheck(); }
     if ((el.dataset.path.indexOf('utilities.') === 0 || el.dataset.path === 'dates.closing') && e.type === 'change') renderCal();
     if (el.dataset.path.indexOf('depositMethod.') === 0 && e.type === 'change') { renderSummary(); if (el.dataset.path === 'depositMethod.method') renderCal(); }
     changed(el.dataset.path);

@@ -51,6 +51,8 @@ input.i:focus{outline:2px solid #E3D3A8;border-color:var(--gold)}
 .chip{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 9px;border-radius:20px;background:var(--line2);color:var(--soft);width:fit-content}
 .chip.ua{background:#EAF0F8;color:var(--navy)} .chip.li{background:var(--greensoft);color:var(--green)} .chip.soon{background:var(--ambersoft);color:var(--amber)}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:18px}
+.fhead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.mailbox{display:flex;flex-direction:column;gap:2px;background:#FFF6D6;border:1px solid #E8D28E;border-radius:12px;padding:12px 18px;color:#5C4510;text-decoration:none}.mailbox:hover{background:#FFEFC2}.mailbox .small{color:#7A6328}
 @media(max-width:820px){.grid{grid-template-columns:1fr}}
 .col{display:flex;flex-direction:column;gap:16px;min-width:0}
 table{width:100%;border-collapse:collapse;font-size:14px}
@@ -192,25 +194,25 @@ function renderFile(f) {
   const listingNeedsPS = f.isListing && !f.hasContract && !/Closed|Fell/.test(f.status);
   $('#file').innerHTML =
     '<a href="#" id="back" class="small">‹ My files</a>' +
-    '<h1 style="margin-top:8px">' + esc(addr) + '</h1>' +
-    '<div class="small muted">' + esc(f.status) + (f.price ? ' · ' + esc(money(f.price)) : '') + (f.service ? ' · ' + esc(f.service) : '') + '</div>' +
+    '<div class="fhead"><div><h1 style="margin-top:8px">' + esc(addr) + '</h1>' +
+      '<div class="small muted">' + esc(f.status) + (f.price ? ' · ' + esc(money(f.price)) : '') + (f.service ? ' · ' + esc(f.service) : '') + '</div></div>' +
+      '<a class="mailbox" href="mailto:' + OWNER + '?subject=' + encodeURIComponent(f.address || f.id) + '"><b>Email Lynne about this file</b><span class="small">' + esc(OWNER) + '</span></a></div>' +
     (listingNeedsPS ? '<div class="banner"><div><b>Under agreement?</b><div class="small muted">Add the executed P&amp;S and the closing details to this listing.</div></div><a class="btn gold" href="intake.html?portal=1&amp;listing=' + encodeURIComponent(f.id) + '&amp;addr=' + encodeURIComponent(f.address || '') + '">Add the P&amp;S</a></div>' : '') +
     '<div class="grid"><div class="col">' +
-      '<section class="card t-blue"><div class="ch">Important dates</div><div class="cb">' +
-        (f.dates.length ? '<table>' + f.dates.map(x => '<tr><td>' + esc(x.label) + '</td><td class="r">' + (x.label === 'Closing' ? 'On or before ' : '') + esc(fmt(x.date)) + '</td></tr>').join('') + '</table>' : '<div class="empty">Dates appear here once the contract is in.</div>') +
-      '</div></section>' +
       '<section class="card t-lav"><div class="ch">Who\'s who</div><div class="cb">' +
         (f.parties.length ? f.parties.map(p => '<div class="person"><div class="role">' + esc(p.role) + '</div><div><b>' + esc(p.name) + '</b>' + (p.company ? ' · ' + esc(p.company) : '') + '</div>' +
           '<div class="small muted">' + [p.email ? '<a href="mailto:' + esc(p.email) + '">' + esc(p.email) + '</a>' : '', esc(p.phone)].filter(Boolean).join(' · ') + '</div></div>').join('') : '<div class="empty">No one added yet.</div>') +
       '</div></section>' +
     '</div><div class="col">' +
-      '<section class="card t-green"><div class="ch"><span>Documents</span><label class="btn small">Upload<input type="file" id="up" hidden multiple></label></div><div class="cb" id="docs">' +
-        (f.docs.length ? f.docs.map(d => '<div class="doc"><span>' + esc(d.name.replace(/^\d{4}-\d{2}-\d{2} \d{4} · /, '')) + '<br><span class="small faint">' + esc(d.group) + ' · ' + esc(d.date.slice(0, 10)) + '</span></span><button class="btn small" data-dl="' + esc(d.id) + '">Download</button></div>').join('') : '<div class="empty">No documents yet.</div>') +
+      '<section class="card t-blue"><div class="ch">Important dates</div><div class="cb">' +
+        (f.dates.length ? '<table>' + f.dates.map(x => '<tr><td>' + esc(x.label) + '</td><td class="r">' + (x.label === 'Closing' ? 'On or before ' : '') + esc(fmt(x.date)) + '</td></tr>').join('') + '</table>' : '<div class="empty">Dates appear here once the contract is in.</div>') +
       '</div></section>' +
       '<section class="card t-pink"><div class="ch">Emails sent on this file</div><div class="cb">' +
         (f.emails.length ? f.emails.map(m => '<details class="mail"><summary><b>' + esc(m.subject) + '</b><div class="small muted">' + esc(new Date(m.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + (m.to ? ' · to ' + esc(m.to) : '') + '</div></summary><pre>' + esc(m.body) + '</pre></details>').join('') : '<div class="empty">Emails from Lynne about this file will be listed here.</div>') +
       '</div></section>' +
-      '<div class="actions"><a class="btn" href="mailto:' + OWNER + '?subject=' + encodeURIComponent(f.address || f.id) + '">Email Lynne about this file</a></div>' +
+      '<section class="card t-green"><div class="ch"><span>Documents</span><label class="btn small">Upload<input type="file" id="up" hidden multiple></label></div><div class="cb" id="docs">' +
+        (f.docs.length ? f.docs.map(d => '<div class="doc"><span>' + esc(d.name.replace(/^\d{4}-\d{2}-\d{2} \d{4} · /, '')) + '<br><span class="small faint">' + esc(d.group) + ' · ' + esc(d.date.slice(0, 10)) + '</span></span><button class="btn small" data-dl="' + esc(d.id) + '">Download</button></div>').join('') : '<div class="empty">No documents yet.</div>') +
+      '</div></section>' +
     '</div></div>';
   $('#back').onclick = e => { e.preventDefault(); loadFiles(); };
   $('#up').onchange = async e => {

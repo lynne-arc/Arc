@@ -525,7 +525,14 @@ function renderFileInfo() {
     '<div class="row2">' + fld('Price', 'property.price') + fld('Deposit amount', 'depositAmount') + '</div>' +
     fld('Buyer name(s)', 'buyers') + fld('Seller name(s)', 'sellers') +
     '<div class="tg"><span>Morning deadline reminders for this file</span><label class="sw"><input type="checkbox" data-path="reminders"' + (F.reminders ? ' checked' : '') + '><span></span></label></div>' +
+    (S.settings.testMode ? '<div class="btns" style="margin-top:6px"><button class="btn danger" id="delFile">Delete this file</button><span class="small faint">Test mode only. Its Drive folder goes to the Trash.</span></div>' : '') +
     '</div>';
+  const df = $('#delFile');
+  if (df) df.onclick = async () => {
+    if (!confirm('Delete ' + fileName() + '? This removes it from the dashboard and puts its Drive folder in the Trash.')) return;
+    try { clearTimeout(saveTimer); dirty = false; await call('deleteFile', { id: F.id }); S.files = S.files.filter(x => x.id !== F.id); F = null; toast('File deleted'); showHome(); }
+    catch (err) { toast(err.message, true); }
+  };
 }
 
 function renderTerms() {

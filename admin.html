@@ -542,17 +542,25 @@ function fld(label, path, type, extra) {
   const v = getPath(F, path); return '<label class="f">' + esc(label) + '<input class="i" data-path="' + path + '" type="' + (type || 'text') + '" value="' + esc(v == null ? '' : v) + '"' + (extra || '') + '></label>';
 }
 /* Fee checks: buyer agreement vs seller-paid, and listing agreement vs what the buyer agent asked for */
-// Short fee line, e.g. "Gross · Seller 2% · Buyer 0.5% (buyer waived)"
+// Fee helpers. Gross/net comes from the listing or buyer agreement unless the P&S says otherwise.
+function feeBasis(v) { v = String(v || '').toLowerCase(); return /net/.test(v) ? 'net' : /gross/.test(v) ? 'gross' : ''; }
+function psBasis() { const ct = F.contractTerms || {}, s = ct.buyerFee || {}; return feeBasis(s.basis) || (/\bnet\b/i.test(ct.buyerFeeText || '') ? 'net' : /gross/i.test(ct.buyerFeeText || '') ? 'gross' : ''); }
+function waiveWord(w) { return /^Yes/.test(w || '') ? 'Waived' : /^Partly/.test(w || '') ? 'partly waived' : /^No/.test(w || '') ? 'buyer pays' : 'who pays?'; }
+function cap(w) { return w ? w[0].toUpperCase() + w.slice(1) : ''; }
+// Short fee line, e.g. "Gross · Seller 2% · Buyer 0.5% Waived"
 function feeShort() {
   const ct = F.contractTerms || {}, s = ct.buyerFee, txt = ct.buyerFeeText || '';
   if (!s || s.amount == null || s.amount === '') return txt;
   const show = (u, v) => u === '$' ? money(v) : String(v).replace(/%$/, '') + '%';
-  const basis = /\bnet\b/i.test(txt) ? 'Net' : /gross|sales? price|purchase price/i.test(txt) ? 'Gross' : '';
-  const parts = [basis, 'Seller ' + show(s.unit, s.amount)].filter(Boolean);
-  const diff = a => (!a || a.unit !== s.unit) ? 0 : Math.round((parseFloat(a.amount) - parseFloat(s.amount)) * 100) / 100;
-  const a = F.buyerAgreementFee, ga = diff(a);
-  if (ga > 0) { const w = a.waive || ''; parts.push('Buyer ' + show(s.unit, ga) + (/^Yes/.test(w) ? ' (buyer waived)' : /^Partly/.test(w) ? ' (partly waived)' : /^No/.test(w) ? ' (buyer pays)' : ' (who pays?)')); }
-  const l = F.listingBuyerFee, gl = diff(l);
+  const a = F.buyerAgreementFee || {}, l = F.listingBuyerFee || {};
+  const agreeBasis = feeBasis(a.basis) || feeBasis(l.basis), pb = psBasis();
+  const basis = pb || agreeBasis;
+  const parts = [basis ? cap(basis) + (pb && agreeBasis && pb !== agreeBasis ? ' ⚑ (agreement ' + agreeBasis + ')' : '') : '', 'Seller ' + show(s.unit, s.amount)].filter(Boolean);
+  const diff = x => (!x || !x.amount || x.unit !== s.unit) ? 0 : Math.round((parseFloat(x.amount) - parseFloat(s.amount)) * 100) / 100;
+  const ga = diff(a), basisGap = a.amount && pb === 'net' && feeBasis(a.basis) === 'gross';
+  if (ga > 0) parts.push('Buyer ' + show(s.unit, ga) + (basisGap ? ' + net/gross difference' : '') + ' ' + waiveWord(a.waive));
+  else if (basisGap) parts.push('Buyer net/gross difference ' + waiveWord(a.waive));
+  const gl = diff(l);
   if (gl < 0) { const c = l.cover || ''; parts.push(/reducing/.test(c) ? 'Listing firm ' + show(s.unit, -gl) : /Seller agreed/.test(c) ? '(seller agreed to ' + show(s.unit, s.amount) + ')' : '(' + show(s.unit, -gl) + ' over listing: who pays?)'); }
   return parts.join(' · ');
 }
@@ -564,11 +572,18 @@ function feeGaps(terms) {
   const a = F.buyerAgreementFee, ga = cmp(a);
   if (ga > 0) {
     const w = a.waive || '', base = 'Buyer fee gap ' + show(a.unit, ga) + ' (agreement ' + show(a.unit, a.amount) + ', seller pays ' + show(a.unit, s.amount) + ')';
-    out.push({ key: 'gap-buyer', text: base + ': ' + (/^Yes/.test(w) ? 'agent is waiving it, check it isn\'t charged at closing' :
+    out.push({ key: 'gap-buyer', text: base + ': ' + (/^Yes/.test(w) ? 'agent is waiving it: get the signed waiver, and check it isn\'t charged at closing' :
       /^Partly/.test(w) ? 'agent is waiving part, check the amount at closing' :
       /^No/.test(w) ? 'buyer owes the difference, make sure it\'s on the closing statement' : 'ask the agent who covers it') });
   }
-  const l = F.listingBuyerFee, gl = cmp(l);
+  const pb = psBasis(), ab = a && feeBasis(a.basis);
+  if (pb && ab && pb !== ab) {
+    const w = (a && a.waive) || '';
+    out.push({ key: 'basis-buyer', text: 'Fee basis: P&S pays on ' + pb + ', buyer agreement is on ' + ab + '. ' + (pb === 'net' ? 'Buyer owes the difference' + (/^Yes/.test(w) ? ': agent is waiving it, get the signed waiver' : ' unless the agent waives it (get a signed waiver)') : 'Check the agent\'s fee on the closing statement') });
+  }
+  const l = F.listingBuyerFee, lb = l && feeBasis(l.basis);
+  if (pb && lb && pb !== lb) out.push({ key: 'basis-listing', text: 'Fee basis: P&S pays the buyer agent on ' + pb + ', listing agreement says ' + lb + '. Confirm with the listing agent which applies' });
+  const gl = cmp(l);
   if (gl < 0) {
     const c = l.cover || '', extra = show(l.unit, -gl);
     out.push({ key: 'gap-listing', text: 'Buyer agent asked for ' + extra + ' more than the listing agreement: ' +
@@ -588,9 +603,21 @@ function renderAgent() {
         ? [['Under agreement (agent)', uaAgent], pns, ['Listing: from the agent', fromAgent], ['From the listing agreement', F.listingRows || []]]
         : [['From the agent', fromAgent], pns])).filter(g => g[1].length);
   const el = $('#cAgent');
-  if (!groups.length) { el.hidden = true; return; }
+  const buyerSide = /Buyer side|Both/.test(F.rep || '') || !!F.buyerAgreementFee, sellerSide = /Seller side|Both/.test(F.rep || '') || !!F.listingBuyerFee;
+  const fees = isUA() && (buyerSide || sellerSide);
+  if (!groups.length && !fees) { el.hidden = true; return; }
   el.hidden = false;
-  el.innerHTML = '<div class="ch"><h3>File info</h3><span class="sub">Agent answers &amp; agreements</span></div><div class="cb">' +
+  const ff = (path, ph, w) => '<input class="i" data-path="' + path + '" value="' + esc(getPath(F, path) || '') + '" placeholder="' + ph + '" style="width:' + (w || 64) + 'px;padding:5px 7px">';
+  const fs = (path, list, w) => '<select class="i" data-path="' + path + '" style="width:' + (w || 'auto') + ';padding:5px 7px"><option value=""></option>' + opt(list, getPath(F, path) || '') + '</select>';
+  const feeRow = (label, html) => '<tr><td style="color:var(--soft);width:34%;padding-right:10px">' + label + '</td><td style="text-align:left"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + html + '</div></td></tr>';
+  const feesHtml = !fees ? '' : '<div class="small muted" style="margin:6px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Fees</div><table class="dates">' +
+    feeRow('Co-broke fee', '<b id="feeLine">' + esc(feeShort() || '—') + '</b>') +
+    (buyerSide ? feeRow('Buyer agreement', ff('buyerAgreementFee.amount', '2.5') + fs('buyerAgreementFee.unit', ['%', '$']) + fs('buyerAgreementFee.basis', ['gross', 'net'])) +
+      feeRow('Difference', fs('buyerAgreementFee.waive', ['Yes — waiving the difference', 'No — buyer pays the difference', 'Partly — see note', 'Not applicable — seller covers it all'], '100%')) : '') +
+    (sellerSide ? feeRow('Listing: buyer agent', ff('listingBuyerFee.amount', '2') + fs('listingBuyerFee.unit', ['%', '$']) + fs('listingBuyerFee.basis', ['gross', 'net'])) +
+      feeRow('If they asked for more', fs('listingBuyerFee.cover', ['Not applicable — same or less', 'Listing firm is reducing its fee to cover it', 'Seller agreed to pay more — listing fee unchanged', 'Not sure yet'], '100%')) : '') +
+    '</table>';
+  el.innerHTML = '<div class="ch"><h3>File info</h3><span class="sub">Agent answers &amp; agreements</span></div><div class="cb">' + feesHtml +
     groups.map(([name, rows]) => '<div class="small muted" style="margin:6px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + esc(name) + '</div>' +
       '<table class="dates">' + rows.map(r => '<tr><td style="color:var(--soft);width:48%;padding-right:10px">' + esc(String(r.label).replace(/^⚑ /, '')) + '</td><td style="text-align:left' + (/^⚑/.test(r.label) ? ';color:var(--red)' : '') + '">' + esc(r.value) + '</td></tr>').join('') + '</table>').join('') +
     '</div>';
@@ -928,6 +955,7 @@ function onEdit(e) {
     setPath(F, el.dataset.path, val);
     if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') { renderTerms(); renderCheck(); }
     if ((el.dataset.path.indexOf('utilities.') === 0 || el.dataset.path === 'dates.closing') && e.type === 'change') renderCal();
+    if (/^(buyerAgreementFee|listingBuyerFee)\./.test(el.dataset.path) && e.type === 'change') { renderTodo(); const b = document.getElementById('feeLine'); if (b) b.textContent = feeShort() || '—'; }
     if (el.dataset.path.indexOf('depositMethod.') === 0 && e.type === 'change') { renderSummary(); if (el.dataset.path === 'depositMethod.method') renderCal(); }
     changed(el.dataset.path);
   } else if (el.dataset.party !== undefined) {

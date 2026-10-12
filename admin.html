@@ -460,8 +460,8 @@ function renderSummary() {
   const items = (ua ? DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, label: l, date: F.dates[k] })) : [])
     .concat((F.custom || []).filter(c => c.date && c.label && (ua ? !isListingDate(c.label) : true)).map(c => ({ label: c.label, date: c.date })))
     .concat(ua ? autoDates().map(a => ({ label: a.label, date: a.date })) : [])
-    .sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));   // closing always last
-  const rows = items.map(x => '<tr><td>' + esc(x.label) + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
+    .sort((a, b) => dateOrder(a.date, b.date, a.k, b.k));
+  const rows = items.map(x => '<tr' + (ua && afterClosing(x.date, x.k) ? ' style="color:var(--red)" title="This date is after closing"' : '') + '><td>' + esc(x.label) + (ua && afterClosing(x.date, x.k) ? ' <b class="small">· after closing</b>' : '') + (x.k === 'deposit' && depShort() ? '<div style="font-size:12px;color:var(--soft)">' + esc(depShort()) + '</div>' : '') + '</td><td>' + (x.k === 'deposit' && F.depositAmount ? esc(money(F.depositAmount)) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + esc(fmtShort(x.date)) + '</td></tr>').join('');
   $('#cSummary').innerHTML =
     '<div class="ch"><h3>Important dates</h3><span class="chip navy">' + esc(F.id) + '</span></div><div class="cb">' +
     '<h2 class="title">' + esc(p.address || 'New file') + (p.town ? ', ' + esc(p.town) : '') + (p.state ? ', ' + esc(p.state) : '') + '</h2>' +
@@ -510,6 +510,9 @@ function openViewer(id) {
 }
 const LISTING_LABELS = ['Listing agreement starts', 'Target MLS live date', 'Photo appointment', 'Withhold from MLS until', 'Listing agreement expires'];
 function isUA() { return /Under Agreement|Clear to Close|Closed/.test(F.status) || !!F.contractFileId; }
+// Date order everywhere: earliest first; on the same day closing goes after the others, so anything dated after closing shows up below it
+function dateOrder(da, db, ka, kb) { da = da || '9999'; db = db || '9999'; return da < db ? -1 : da > db ? 1 : (ka === 'closing') - (kb === 'closing'); }
+function afterClosing(d, k) { return k !== 'closing' && F.dates.closing && d && d > F.dates.closing; }
 function isListingDate(label) { return LISTING_LABELS.indexOf(label) > -1; }
 function termOn(k) { return k === 'effective' || k === 'closing' || F.terms[k] !== false; }
 // Collapsible cards: click a card's title bar. Remembered on this computer.
@@ -632,7 +635,8 @@ function renderCal() {
   const byDate = (a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0;
   const contract = DATE_KEYS.filter(([k]) => termOn(k)).map(keyRow)
     .concat((F.custom || []).map((c, i) => [c, i]).filter(([c]) => !isListingDate(c.label)).map(([c, i]) => custRow(c, i)))
-    .concat(autoDates().map(autoRow)).sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || byDate(a, b));   // closing always last
+    .concat(autoDates().map(autoRow)).sort((a, b) => dateOrder(a.date, b.date, a.k, b.k));
+  contract.forEach(x => { if (afterClosing(x.date, x.k)) x.html = x.html.replace('<div class="calrow"', '<div class="calrow" style="background:var(--redsoft)" title="This date is after closing"'); });
   const listing = (F.custom || []).map((c, i) => [c, i]).filter(([c]) => isListingDate(c.label)).map(([c, i]) => custRow(c, i)).sort((a, b) => -byDate(a, b));
   const head = t => '<div class="small muted" style="margin:10px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + t + '</div>';
   const past = contract.concat(listing).filter(x => x.st === 'met').length;
@@ -706,7 +710,7 @@ function summaryData() {
   // Contract dates only (no listing dates, no ARC's own reminders), in date order, closing always last
   const dates = DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, l, d: F.dates[k] }))
     .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))
-    .sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0))
+    .sort((a, b) => dateOrder(a.d, b.d, a.k, b.k))
     .map(x => [x.l, (x.k === 'deposit' && F.depositAmount ? money(F.depositAmount) + ', ' : '') + (x.k === 'closing' ? 'On or before ' : '') + fmt(x.d, true)]);
   return { who, dates };
 }
@@ -774,7 +778,7 @@ function datesBlock() {
   // Contract dates only, in date order, closing always last (same as the Executed Contract Summary)
   const rows = DATE_KEYS.filter(([k]) => F.dates[k] && termOn(k)).map(([k, l]) => ({ k, l, d: F.dates[k] }))
     .concat((F.custom || []).filter(c => c.date && c.label && !isListingDate(c.label)).map(c => ({ l: c.label, d: c.date })))
-    .sort((a, b) => (a.k === 'closing') - (b.k === 'closing') || (a.d < b.d ? -1 : a.d > b.d ? 1 : 0))
+    .sort((a, b) => dateOrder(a.d, b.d, a.k, b.k))
     .map(({ k, l, d }) => {
       if (k === 'deposit') return 'Earnest money deposit: ' + (F.depositAmount ? money(F.depositAmount) + ' due ' : '') + fmt(d, true);
       if (k === 'closing') return 'Closing: on or before ' + fmt(d, true);
@@ -817,7 +821,7 @@ function buildEmail(kind) {
     return { to: emailsOf(to), cc: emailsOf(ours), subject: tag() + ': you are under agreement, here is what happens next',
       body: 'Hi ' + greet + ',\n\nCongratulations — ' + where() + ' is officially under agreement! My name is Lynne, and I am the transaction coordinator working with ' + (joinNames(ours.map(p => first(p.name))) || 'your agent') + ' to keep everything on track to closing.\n\n' +
         'Important dates\n' + datesBlock() + '\n\n' +
-        (steps.length ? 'What happens next\n' + steps.sort((a, b) => (a[0] === 'closing') - (b[0] === 'closing') || (F.dates[a[0]] < F.dates[b[0]] ? -1 : F.dates[a[0]] > F.dates[b[0]] ? 1 : 0)).map((s, i) => (i + 1) + '. ' + s[1]).join('\n') + '\n\n' : '') +
+        (steps.length ? 'What happens next\n' + steps.sort((a, b) => dateOrder(F.dates[a[0]], F.dates[b[0]], a[0], b[0])).map((s, i) => (i + 1) + '. ' + s[1]).join('\n') + '\n\n' : '') +
         'IMPORTANT — wire fraud: I will never send or change wiring instructions by email. Before you send any money, always call your closing attorney or title company at a phone number you already know.\n\n' +
         'Please add these dates to your calendar, and reply with any questions — no question is too small.' + SIGNATURE };
   }

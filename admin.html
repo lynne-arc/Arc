@@ -548,6 +548,10 @@ function fld(label, path, type, extra) {
 function shortCont(c) { return String(c || '').replace(/\s*\([^)]*\)/g, '').trim(); }
 // Stand-alone contingencies only; anything that lives under due diligence / inspection stays off this line
 function otherConts() { return ((F.contractTerms || {}).otherContingencies || []).filter(c => !/condo|association|co-?op|pud|covenant|easement|insurance|flood|radon|septic|water|well|survey|lead|pest|termite|inspection|due diligence/i.test(c)).map(shortCont); }
+// "2.5", "2.5%", " 2.5 % " → 2.5 ; blank unit means % (the usual case)
+function feeNum(v) { const n = parseFloat(String(v == null ? '' : v).replace(/[^0-9.]/g, '')); return isNaN(n) ? null : n; }
+function feeUnit(u) { return /\$|dollar|flat/i.test(String(u || '')) ? '$' : '%'; }
+function oursAs(role) { return (F.parties || []).some(p => p.ours && p.role === role); }
 function feeBasis(v) { v = String(v || '').toLowerCase(); return /net/.test(v) ? 'net' : /gross/.test(v) ? 'gross' : ''; }
 function psBasis() { const ct = F.contractTerms || {}, s = ct.buyerFee || {}; return feeBasis(s.basis) || (/\bnet\b/i.test(ct.buyerFeeText || '') ? 'net' : /gross/i.test(ct.buyerFeeText || '') ? 'gross' : ''); }
 function waiveWord(w) { return /^Yes/.test(w || '') ? 'Waived' : /^Partly/.test(w || '') ? 'partly waived' : /^No/.test(w || '') ? 'buyer pays' : 'who pays?'; }
@@ -556,15 +560,16 @@ function cap(w) { return w ? w[0].toUpperCase() + w.slice(1) : ''; }
 function feeShort() {
   const ct = F.contractTerms || {}, s = ct.buyerFee, txt = ct.buyerFeeText || '';
   if (!s || s.amount == null || s.amount === '') return txt;
-  const show = (u, v) => u === '$' ? money(v) : String(v).replace(/%$/, '') + '%';
+  const show = (u, v) => feeUnit(u) === '$' ? money(v) : String(v).replace(/%$/, '') + '%';
   const a = F.buyerAgreementFee || {}, l = F.listingBuyerFee || {};
   const agreeBasis = feeBasis(a.basis) || feeBasis(l.basis), pb = psBasis();
   const basis = pb || agreeBasis;
   const parts = [basis ? cap(basis) + (pb && agreeBasis && pb !== agreeBasis ? ' ⚑ (agreement ' + agreeBasis + ')' : '') : '', 'Seller ' + show(s.unit, s.amount)].filter(Boolean);
-  const diff = x => (!x || !x.amount || x.unit !== s.unit) ? 0 : Math.round((parseFloat(x.amount) - parseFloat(s.amount)) * 100) / 100;
+  const diff = x => (!x || feeNum(x.amount) == null || feeUnit(x.unit) !== feeUnit(s.unit)) ? 0 : Math.round((feeNum(x.amount) - feeNum(s.amount)) * 100) / 100;
   const ga = diff(a), basisGap = a.amount && pb === 'net' && feeBasis(a.basis) === 'gross';
   if (ga > 0) parts.push('Buyer ' + show(s.unit, ga) + (basisGap ? ' + net/gross difference' : '') + ' ' + waiveWord(a.waive));
   else if (basisGap) parts.push('Buyer net/gross difference ' + waiveWord(a.waive));
+  if (feeNum(a.amount) == null && oursAs('Buyer agent')) parts.push('Buyer agreement fee? (add it in File info → Fees)');
   const gl = diff(l);
   if (gl < 0) { const c = l.cover || ''; parts.push(/reducing/.test(c) ? 'Listing firm ' + show(s.unit, -gl) : /Seller agreed/.test(c) ? '(seller agreed to ' + show(s.unit, s.amount) + ')' : '(' + show(s.unit, -gl) + ' over listing: who pays?)'); }
   return parts.join(' · ');
@@ -573,7 +578,7 @@ function feeGaps(terms) {
   const s = (terms || F.contractTerms || {}).buyerFee, out = [];
   if (!s) return out;
   const show = (u, v) => u === '$' ? money(v) : v + '%';
-  const cmp = a => (!a || a.unit !== s.unit) ? null : Math.round((parseFloat(a.amount) - parseFloat(s.amount)) * 100) / 100;
+  const cmp = a => (!a || feeNum(a.amount) == null || feeUnit(a.unit) !== feeUnit(s.unit)) ? null : Math.round((feeNum(a.amount) - feeNum(s.amount)) * 100) / 100;
   const a = F.buyerAgreementFee, ga = cmp(a);
   if (ga > 0) {
     const w = a.waive || '', base = 'Buyer fee gap ' + show(a.unit, ga) + ' (agreement ' + show(a.unit, a.amount) + ', seller pays ' + show(a.unit, s.amount) + ')';
@@ -608,14 +613,13 @@ function renderAgent() {
         ? [['Under agreement (agent)', uaAgent], pns, ['Listing: from the agent', fromAgent], ['From the listing agreement', F.listingRows || []]]
         : [['From the agent', fromAgent], pns])).filter(g => g[1].length);
   const el = $('#cAgent');
-  const oursAs = role => (F.parties || []).some(p => p.ours && p.role === role);
   const buyerSide = /Buyer side|Both/.test(F.rep || '') || !!(F.buyerAgreementFee && F.buyerAgreementFee.amount) || !!F.buyerAgreementDocId || oursAs('Buyer agent'),
     sellerSide = /Seller side|Both/.test(F.rep || '') || !!(F.listingBuyerFee && F.listingBuyerFee.amount) || oursAs('Listing agent');
   const fees = isUA() && (buyerSide || sellerSide);
   if (!groups.length && !fees) { el.hidden = true; return; }
   el.hidden = false;
   const ff = (path, ph, w) => '<input class="i" data-path="' + path + '" value="' + esc(getPath(F, path) || '') + '" placeholder="' + ph + '" style="width:' + (w || 64) + 'px;padding:5px 7px">';
-  const fs = (path, list, w) => '<select class="i" data-path="' + path + '" style="width:' + (w || 'auto') + ';padding:5px 7px"><option value=""></option>' + opt(list, getPath(F, path) || '') + '</select>';
+  const fs = (path, list, w) => '<select class="i" data-path="' + path + '" style="width:' + (w || 'auto') + ';padding:5px 7px">' + (/\.unit$/.test(path) ? '' : '<option value=""></option>') + opt(list, getPath(F, path) || (/\.unit$/.test(path) ? '%' : '')) + '</select>';
   const feeRow = (label, html) => '<tr><td style="color:var(--soft);width:34%;padding-right:10px">' + label + '</td><td style="text-align:left"><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + html + '</div></td></tr>';
   const feesHtml = !fees ? '' : '<div class="small muted" style="margin:6px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">Fees</div><table class="dates">' +
     feeRow('Co-broke fee', '<b id="feeLine">' + esc(feeShort() || '—') + '</b>') +

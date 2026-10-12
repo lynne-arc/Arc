@@ -501,6 +501,12 @@ function isUA() { return /Under Agreement|Clear to Close|Closed/.test(F.status) 
 function isListingDate(label) { return LISTING_LABELS.indexOf(label) > -1; }
 function termOn(k) { return k === 'effective' || k === 'closing' || F.terms[k] !== false; }
 // Collapsible cards: click a card's title bar. Remembered on this computer.
+let SHOW_DONE = { todo: false, check: false, cal: false };
+function doneToggle(key, n, what) { return n ? '<button class="btn ghost small showdone" data-showdone="' + key + '" style="margin-top:6px">' + (SHOW_DONE[key] ? 'Hide ' : 'Show ') + n + ' ' + what + '</button>' : ''; }
+document.addEventListener('click', e => { const b = e.target.closest('[data-showdone]'); if (!b) return; const k = b.dataset.showdone; SHOW_DONE[k] = !SHOW_DONE[k]; ({ todo: renderTodo, check: renderCheck, cal: renderCal })[k](); });
+// A past date is "met" when its checklist item is ticked (or it has none)
+const MET_BY = { deposit: 'Deposit confirmed', inspection: 'Inspection completed', appraisal: 'Appraisal received', financing: 'Financing commitment received', closing: 'Closed' };
+function metState(k, date) { if (!date || date >= today()) return 'upcoming'; const lab = MET_BY[k]; if (!lab) return 'met'; const c = (F.checklist || []).find(x => x.label === lab); return !c || c.done ? 'met' : 'overdue'; }
 const DEP_METHODS = ['DepositLink — Lynne to send the request', 'Earnnest — Lynne to send the request', 'Wire', 'Personal check — mailed to Verani', 'Personal check — dropped off at a Verani office', 'Held by the other brokerage or an attorney', 'Not sure yet'];
 function depShort() { const d = F.depositMethod || {}, m = d.method || ''; if (!m) return '';
   return m.replace(/ — Lynne to send the request/, '').replace(/Personal check — mailed to Verani/, 'Check, mailed to Verani').replace(/Personal check — dropped off at a Verani office/, 'Check, drop-off' + (d.office ? ' ' + d.office : '')).replace(/Held by the other brokerage or an attorney/, 'Held elsewhere'); }
@@ -563,10 +569,15 @@ function renderAgent() {
 function renderTodo() {
   F.todos = F.todos || []; F.gapDone = F.gapDone || {};
   const gaps = feeGaps(), open = F.todos.filter(t => !t.done).length + gaps.filter(g => !F.gapDone[g.key]).length;
+  const gapRow = g => '<label class="todo flag' + (F.gapDone[g.key] ? ' done' : '') + '"><input type="checkbox" data-gap="' + g.key + '"' + (F.gapDone[g.key] ? ' checked' : '') + '><span><span class="tx">' + esc(g.text) + '</span><span class="src">FEE CHECK</span></span></label>';
+  const todoRow = ([t, i]) => '<label class="todo' + (t.done ? ' done' : '') + '"><input type="checkbox" data-todo="' + i + '"' + (t.done ? ' checked' : '') + '><span><span class="tx">' + esc(t.text) + '</span>' + (t.src ? '<span class="src">' + esc(t.src.toUpperCase()) + '</span>' : '') + '</span><button class="x" data-deltodo="' + i + '" title="Remove">✕</button></label>';
+  const idx = F.todos.map((t, i) => [t, i]), doneN = gaps.filter(g => F.gapDone[g.key]).length + idx.filter(([t]) => t.done).length;
   $('#cTodo').innerHTML = '<div class="ch"><h3>To do · confirm</h3><span class="sub">' + open + ' open</span></div><div class="cb">' +
-    gaps.map(g => '<label class="todo flag' + (F.gapDone[g.key] ? ' done' : '') + '"><input type="checkbox" data-gap="' + g.key + '"' + (F.gapDone[g.key] ? ' checked' : '') + '><span><span class="tx">' + esc(g.text) + '</span><span class="src">FEE CHECK</span></span></label>').join('') +
-    F.todos.map((t, i) => '<label class="todo' + (t.done ? ' done' : '') + '"><input type="checkbox" data-todo="' + i + '"' + (t.done ? ' checked' : '') + '><span><span class="tx">' + esc(t.text) + '</span>' + (t.src ? '<span class="src">' + esc(t.src.toUpperCase()) + '</span>' : '') + '</span><button class="x" data-deltodo="' + i + '" title="Remove">✕</button></label>').join('') +
+    gaps.filter(g => !F.gapDone[g.key]).map(gapRow).join('') + idx.filter(([t]) => !t.done).map(todoRow).join('') +
     (!gaps.length && !F.todos.length ? '<div class="empty">Nothing to confirm yet. Items appear here when a contract is read or an agent sends the File Input page.</div>' : '') +
+    (doneN && !open ? '<div class="empty">All done.</div>' : '') +
+    (SHOW_DONE.todo ? gaps.filter(g => F.gapDone[g.key]).map(gapRow).join('') + idx.filter(([t]) => t.done).map(todoRow).join('') : '') +
+    doneToggle('todo', doneN, 'done') +
     '<div class="btns" style="margin-top:8px"><input class="i" id="newTodo" placeholder="Add a to-do" style="flex:1"><button class="btn" id="addTodo">Add</button></div></div>';
   $('#addTodo').onclick = () => { const v = $('#newTodo').value.trim(); if (!v) return; F.todos.push({ text: v, done: false, src: '' }); renderTodo(); changed(); };
 }
@@ -599,28 +610,30 @@ function renderTerms() {
 
 function renderCal() {
   const basis = (F.reading || {}).basis || {}, ua = isUA();
-  const keyRow = ([k, l]) => ({ date: F.dates[k] || '', html: '<div class="calrow" title="' + esc(basis[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>' });
-  const custRow = (c, i) => ({ date: c.date || '', html: '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>' });
-  const autoRow = a => ({ date: a.date, html: '<div class="calrow" title="Moves with the closing date. On this day a request email to title / attorney is drafted for you."><span>' + esc(a.label) + '<div class="small faint">' + esc(a.note) + ' · email to title / attorney</div></span><span style="padding-left:9px">' + esc(fmt(a.date, true)) + '</span><span>' + when(a.date) + '</span></div>' });
+  F.depositMethod = F.depositMethod || {};
+  const depRow = () => '<div class="row3" style="grid-template-columns:' + (/dropped off/.test(F.depositMethod.method || '') ? '3fr 2fr' : '1fr') + ';margin:0 0 8px">' +
+      '<label class="f">Paid by<select class="i" data-path="depositMethod.method"><option></option>' + opt(DEP_METHODS, F.depositMethod.method) + '</select></label>' +
+      (/dropped off/.test(F.depositMethod.method || '') ? '<label class="f">Drop-off office<input class="i" data-path="depositMethod.office" value="' + esc(F.depositMethod.office || '') + '"></label>' : '') + '</div>';
+  const keyRow = ([k, l]) => { const st = metState(k, F.dates[k]); return { date: F.dates[k] || '', st, html: '<div class="calrow" title="' + esc(basis[k] || '') + '"><span>' + esc(l) + '</span><input class="i" type="date" data-path="dates.' + k + '" value="' + esc(F.dates[k] || '') + '"><span class="dchip" data-chip="' + k + '">' + (st === 'overdue' ? '<span style="color:var(--red);font-weight:600">Not ticked: ' + esc(MET_BY[k]) + '</span>' : F.dates[k] && k !== 'effective' ? when(F.dates[k]) : '') + '</span></div>' + (k === 'deposit' ? depRow() : '') }; };
+  const custRow = (c, i) => ({ date: c.date || '', st: c.label ? metState('', c.date) : 'upcoming', html: '<div class="calrow"><input class="i" data-custom="' + i + '" data-cf="label" value="' + esc(c.label) + '" placeholder="What is due"><input class="i" type="date" data-custom="' + i + '" data-cf="date" value="' + esc(c.date || '') + '"><button class="btn ghost danger" data-delcustom="' + i + '" title="Remove">✕</button></div>' });
+  const autoRow = a => ({ date: a.date, st: metState('', a.date), html: '<div class="calrow" title="Moves with the closing date. On this day a request email to title / attorney is drafted for you."><span>' + esc(a.label) + '<div class="small faint">' + esc(a.note) + ' · email to title / attorney</div></span><span style="padding-left:9px">' + esc(fmt(a.date, true)) + '</span><span>' + when(a.date) + '</span></div>' });
   const byDate = (a, b) => (a.date || '9999') < (b.date || '9999') ? -1 : (a.date || '9999') > (b.date || '9999') ? 1 : 0;
   const contract = DATE_KEYS.filter(([k]) => termOn(k)).map(keyRow)
     .concat((F.custom || []).map((c, i) => [c, i]).filter(([c]) => !isListingDate(c.label)).map(([c, i]) => custRow(c, i)))
     .concat(autoDates().map(autoRow)).sort(byDate);
   const listing = (F.custom || []).map((c, i) => [c, i]).filter(([c]) => isListingDate(c.label)).map(([c, i]) => custRow(c, i)).sort((a, b) => -byDate(a, b));
   const head = t => '<div class="small muted" style="margin:10px 0 2px;font-weight:600;letter-spacing:.06em;text-transform:uppercase">' + t + '</div>';
-  F.depositMethod = F.depositMethod || {};
+  const past = contract.concat(listing).filter(x => x.st === 'met').length;
+  const show = list => list.filter(x => x.st !== 'met' || SHOW_DONE.cal).map(x => x.html).join('');
   $('#cCal').innerHTML = '<div class="ch"><h3>Calendar</h3><span class="sub">Change any date here</span></div><div class="cb">' +
-    (ua || !listing.length ? head('Contract dates') + contract.map(x => x.html).join('') : '') +
-    (listing.length ? head('Listing dates') + listing.map(x => x.html).join('') : '') +
-    (!ua && listing.length ? head('Contract dates') + contract.map(x => x.html).join('') : '') +
+    (ua || !listing.length ? head('Contract dates') + show(contract) : '') +
+    (listing.length ? head('Listing dates') + show(listing) : '') +
+    (!ua && listing.length ? head('Contract dates') + show(contract) : '') +
     '<div class="row3" style="margin-top:10px;grid-template-columns:1fr 1fr 1fr">' +
       '<label class="f">Heating fuel<select class="i" data-path="utilities.fuel"><option></option>' + opt(['None', 'Oil', 'Propane', 'Oil & propane', 'Not sure'], (F.utilities || {}).fuel) + '</select></label>' +
       '<label class="f">Water / sewer<select class="i" data-path="utilities.waterSewer"><option></option>' + opt(['Water & sewer', 'Water only', 'Sewer only', 'No — private well & septic', 'Not sure'], (F.utilities || {}).waterSewer) + '</select></label>' +
       '<label class="f">Gas meter reading<select class="i" data-path="utilities.gas"><option></option>' + opt(['Yes', 'No', 'Not sure'], (F.utilities || {}).gas) + '</select></label></div>' +
-    '<div class="row3" style="margin-top:6px;grid-template-columns:2fr 1fr">' +
-      '<label class="f">Deposit paid by<select class="i" data-path="depositMethod.method"><option></option>' + opt(DEP_METHODS, F.depositMethod.method) + '</select></label>' +
-      '<label class="f">Drop-off office<input class="i" data-path="depositMethod.office" value="' + esc(F.depositMethod.office || '') + '"></label></div>' +
-    '<div class="btns" style="margin-top:10px"><button class="btn" id="addCustom">+ Add a date</button></div></div>';
+    '<div class="btns" style="margin-top:10px">' + doneToggle('cal', past, 'past dates') + '<button class="btn" id="addCustom">+ Add a date</button></div></div>';
   $('#addCustom').onclick = () => { F.custom = F.custom || []; F.custom.push({ label: '', date: '' }); renderCal(); changed(); };
 }
 
@@ -803,9 +816,11 @@ function renderLog() {
 
 function renderCheck() {
   const n = (F.checklist || []).filter(c => c.done).length;
+  const row = ([c, i]) => '<label class="check' + (c.done ? ' done' : '') + '"><input type="checkbox" data-check="' + i + '"' + (c.done ? ' checked' : '') + '><span style="flex:1"><span class="l">' + esc(c.label) + '</span>' +
+      (c.done && c.at ? '<div class="small faint">' + esc(new Date(c.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '</div>' : '') + '</span></label>';
+  const idx = (F.checklist || []).map((c, i) => [c, i]);
   $('#cCheck').innerHTML = '<div class="ch"><h3>Checklist</h3><span class="sub">' + n + ' of ' + (F.checklist || []).length + ' done</span></div><div class="cb">' +
-    (F.checklist || []).map((c, i) => '<label class="check' + (c.done ? ' done' : '') + '"><input type="checkbox" data-check="' + i + '"' + (c.done ? ' checked' : '') + '><span style="flex:1"><span class="l">' + esc(c.label) + '</span>' +
-      (c.done && c.at ? '<div class="small faint">' + esc(new Date(c.at).toLocaleString('en-US', {month:'short', day:'numeric', hour:'numeric', minute:'2-digit'})) + '</div>' : '') + '</span></label>').join('') +
+    idx.filter(([c]) => !c.done).map(row).join('') + (SHOW_DONE.check ? idx.filter(([c]) => c.done).map(row).join('') : '') + doneToggle('check', n, 'done') +
     '<div class="btns" style="margin-top:8px"><input class="i" id="newCheck" placeholder="Add a checklist item" style="flex:1"><button class="btn" id="addCheck">Add</button></div></div>';
   $('#addCheck').onclick = () => { const v = $('#newCheck').value.trim(); if (!v) return; F.checklist.push({ label: v, done: false, at: '' }); renderCheck(); changed(); };
 }
@@ -828,7 +843,7 @@ function onEdit(e) {
     setPath(F, el.dataset.path, val);
     if (el.dataset.path.indexOf('terms.') === 0 || el.dataset.path === 'status') renderTerms();
     if ((el.dataset.path.indexOf('utilities.') === 0 || el.dataset.path === 'dates.closing') && e.type === 'change') renderCal();
-    if (el.dataset.path.indexOf('depositMethod.') === 0 && e.type === 'change') renderSummary();
+    if (el.dataset.path.indexOf('depositMethod.') === 0 && e.type === 'change') { renderSummary(); if (el.dataset.path === 'depositMethod.method') renderCal(); }
     changed(el.dataset.path);
   } else if (el.dataset.party !== undefined) {
     const p = F.parties[+el.dataset.party], k = el.dataset.pf;
@@ -838,7 +853,7 @@ function onEdit(e) {
   } else if (el.dataset.custom !== undefined) {
     F.custom[+el.dataset.custom][el.dataset.cf] = el.value; changed();
   } else if (el.dataset.check !== undefined && e.type === 'change') {
-    const c = F.checklist[+el.dataset.check]; c.done = el.checked; c.at = el.checked ? new Date().toISOString() : ''; renderCheck(); changed();
+    const c = F.checklist[+el.dataset.check]; c.done = el.checked; c.at = el.checked ? new Date().toISOString() : ''; renderCheck(); renderCal(); changed();
   } else if (el.dataset.todo !== undefined && e.type === 'change') {
     const t = F.todos[+el.dataset.todo]; t.done = el.checked; t.at = el.checked ? new Date().toISOString() : ''; renderTodo(); changed();
   } else if (el.dataset.gap && e.type === 'change') {

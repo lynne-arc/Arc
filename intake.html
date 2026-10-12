@@ -85,7 +85,7 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--goldline);border
         <select name="clientSide" required><option value="">Choose…</option><option>Buyer</option><option>Seller</option></select></label>
       <label data-once>Transaction platform <span class="req">*</span>
         <select name="platform" required><option value="">Choose…</option><option>Dotloop</option><option>SkySlope</option><option>Lone Wolf / Transact</option><option>Other</option></select></label>
-      <label data-once>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
+      <label data-loop>Have you added lynne@arkroyalclosings.com to the loop? <span class="req">*</span>
         <select name="onLoop" required><option value="">Choose…</option><option>Yes</option><option>Not yet</option></select></label>
     </div>
   </section>
@@ -255,9 +255,9 @@ const PORTAL = QS.has('portal');
 let TOKEN = ''; try { TOKEN = localStorage.getItem('arcAgentToken') || ''; } catch (e) {}
 function onceQuestions(a) {
   if (a.platform) form.platform.value = a.platform;
-  if (a.onLoop) form.onLoop.value = a.onLoop;
-  // asked once: hidden when we already have the platform and ARC has been added
-  document.querySelectorAll('[data-once]').forEach(el => { el.hidden = !!(a.platform && a.onLoop === 'Yes'); });
+  // platform: asked once per agent. "Added to the loop": asked on every new file, not when adding a P&S to a listing ARC already has.
+  document.querySelectorAll('[data-once]').forEach(el => { el.hidden = !!a.platform; });
+  document.querySelectorAll('[data-loop]').forEach(el => { el.hidden = !!QS.get('listing'); });
 }
 async function startPortal() {
   if (!PORTAL) return;

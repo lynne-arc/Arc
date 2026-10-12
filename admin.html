@@ -379,6 +379,10 @@ async function showHome() {
 document.addEventListener('click', e => { const o = e.target.closest('[data-open]'); if (o) openFile(o.dataset.open); });
 /* ---------- Agent teams (each member signs in to their own portal; team files show for all of them) ---------- */
 let TEAM_EDIT = null;
+function sharedNote(t) {
+  const g = {}; (t.members || []).forEach(m => { const k = String(m.email || '').trim().toLowerCase(); if (k) (g[k] = g[k] || []).push(String(m.name || '').split(/\s+/)[0]); });
+  return Object.keys(g).filter(k => g[k].length > 1).map(k => '<div class="small" style="margin-top:3px"><span class="chip gold">Shared</span> ' + esc(g[k].join(' & ')) + ' · ' + esc(k) + '</div>').join('');
+}
 function renderTeams() {
   const el = document.getElementById('teamsCard'); if (!el) return;
   const teams = S.teams || [];
@@ -386,6 +390,7 @@ function renderTeams() {
   const view = '<div class="ch"><h3>Agent teams</h3><span class="sub">Every member sees the team\'s files in their portal</span></div><div class="cb">' +
     (teams.length ? teams.map(t => '<div class="up" style="cursor:default;align-items:flex-start"><div><b>' + esc(t.name) + '</b>' + (t.brokerage ? ' <span class="small muted">· ' + esc(t.brokerage) + '</span>' : '') +
       (t.members || []).map(m => '<div class="small">' + esc(m.name) + ' <span class="muted">' + esc([m.email, m.phone].filter(Boolean).join(' · ')) + '</span>' + (lic(m) ? ' <span class="faint">· ' + esc(lic(m)) + '</span>' : '') + '</div>').join('') +
+      sharedNote(t) +
       '</div><button class="btn small" data-editteam="' + esc(t.id) + '">Edit</button></div>').join('') : '<div class="empty">No teams yet.</div>') +
     '<div class="btns" style="margin-top:8px"><button class="btn" data-editteam="new">+ New team</button></div></div>';
   if (!TEAM_EDIT) { el.innerHTML = view; return; }
@@ -396,7 +401,8 @@ function renderTeams() {
   el.innerHTML = '<div class="ch"><h3>' + (t.id ? 'Edit team' : 'New team') + '</h3></div><div class="cb">' +
     '<div class="row2" style="margin-bottom:10px"><label class="f">Team name<input class="i" id="tName" value="' + esc(t.name || '') + '"></label><label class="f">Brokerage<input class="i" id="tBrok" value="' + esc(t.brokerage || '') + '"></label></div>' +
     '<div class="small muted" style="margin-bottom:4px">Members (each signs in with their own email). Type a name and press <b>Roster</b> to fill their mobile, email and license numbers from the Verani rosters.</div>' +
-    (t.members || []).map(row).join('') +
+    (t.members || []).map(row).join('') + sharedNote(t) +
+    '<div class="small faint" style="margin:4px 0 8px">Two people on one email (e.g. a team alias)? Put the same email on both: emails show it as one shared address, and either of them can sign in with it.</div>' +
     '<div class="btns"><button class="btn" id="tAdd">+ Add member</button><span style="flex:1"></span>' + (t.id ? '<button class="btn ghost danger" id="tDel">Delete team</button>' : '') +
     '<button class="btn ghost" id="tCancel">Cancel</button><button class="btn primary" id="tSave">Save team</button></div></div>';
 }
@@ -760,7 +766,12 @@ function renderCal() {
 
 function fileState() { return String((F.property || {}).state || '').trim().toUpperCase(); }
 // The agent's license for the property's state, from their contact (agents can hold NH, ME and MA licenses)
-function partyLicense(p) { const em = String(p.email || '').toLowerCase(), c = S.contacts.find(x => (em && String(x.email || '').toLowerCase() === em) || (!em && x.name === p.name)); return (c && c.licenses && c.licenses[fileState()]) || ''; }
+function partyLicense(p) {
+  const st = fileState(), nm = String(p.name || '').trim().toLowerCase(), em = String(p.email || '').toLowerCase();
+  for (const t of S.teams || []) for (const m of t.members || []) if (nm && String(m.name || '').trim().toLowerCase() === nm && (m.licenses || {})[st]) return m.licenses[st];
+  const c = S.contacts.find(x => nm && String(x.name || '').trim().toLowerCase() === nm && x.licenses && x.licenses[st]) || S.contacts.find(x => em && String(x.email || '').toLowerCase() === em && !x.shared);
+  return (c && c.licenses && c.licenses[st]) || '';
+}
 function renderParties() {
   const roles = S.settings.roles || [];
   $('#cParties').innerHTML = '<div class="ch"><h3>Parties</h3><span class="sub">Saved to your contacts automatically</span></div><div class="cb">' +
@@ -948,7 +959,8 @@ const EMAIL_META = {
 function pills(list) {
   const arr = String(list || '').split(',').map(x => x.trim()).filter(Boolean);
   if (!arr.length) return '<span class="small faint">No one yet. Add emails in Parties.</span>';
-  return arr.map(em => { const p = (F.parties || []).find(x => (x.email || '').toLowerCase() === em.toLowerCase());
+  return arr.map(em => { const sh = (S.contacts || []).find(c => c.shared && String(c.email || '').toLowerCase() === em.toLowerCase());
+    const p = sh ? { name: sh.name } : (F.parties || []).find(x => (x.email || '').toLowerCase() === em.toLowerCase());
     return '<span class="pill" title="' + esc(em) + '">' + esc(p && p.name ? p.name : em) + (p && p.name ? ' <small>' + esc(em) + '</small>' : '') + '</span>'; }).join('');
 }
 function renderEmail(kind) {

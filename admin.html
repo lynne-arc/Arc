@@ -48,7 +48,7 @@ a{color:var(--navy2)}
 .card>.ch{cursor:pointer;user-select:none}
 .card>.ch::after{content:'▾';margin-left:8px;color:var(--faint);font-size:12px;flex:none;transition:transform .15s}
 .card.collapsed>.ch::after{transform:rotate(-90deg)}
-.card.collapsed>:not(.ch){display:none!important}
+#cDocs.collapsed>.cb{display:block!important}#cDocs.collapsed>.cb>:not(.ecs){display:none!important}.card.collapsed>:not(.ch){display:none!important}
 .card.collapsed>.ch{border-bottom:0}
 #cViewer>.ch{cursor:default} #cViewer>.ch::after{content:none}
 .viewer{position:sticky;top:76px;z-index:5;box-shadow:0 8px 30px rgba(30,40,80,.12)}
@@ -671,7 +671,7 @@ const DOC_ROLES = { pns: 'Executed P&S', listing: 'Listing agreement', buyer: 'B
 function docRole(id) { return id === F.contractFileId ? 'pns' : id === F.listingDocId ? 'listing' : id === F.buyerAgreementDocId ? 'buyer' : ''; }
 function renderDocs() {
   $('#cDocs').innerHTML = '<div class="ch"><h3>Documents</h3><span class="sub">Drive › Transactions › ' + esc(fileName()) + '</span></div><div class="cb">' +
-    '<div class="cfile" style="margin-top:0"><div><div class="n">Executed Contract Summary</div><div class="m">The Important Dates page, ready to send to anyone on the deal</div></div><button class="btn" id="ecsBtn">Download</button></div>' +
+    '<div class="cfile ecs" style="margin-top:0"><div><div class="n">Executed Contract Summary</div><div class="m">The Important Dates page, ready to send to anyone on the deal</div></div><button class="btn" id="ecsBtn">Download</button></div>' +
     (DOCS.length ? DOCS.map(d => { const role = docRole(d.id);
       return '<div class="doc"><a href="#" data-view="' + esc(d.id) + '">' + esc(d.name) + '</a>' +
         (role ? '<span class="chip gold">' + esc(DOC_ROLES[role]) + '</span>' : '') + '<span class="chip">' + esc(d.group) + '</span>' +

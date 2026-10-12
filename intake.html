@@ -273,6 +273,9 @@ function fillListings() {
 }
 form.agentEmail.addEventListener('change', () => lookupAgent(!!form.agentPhone.value.trim()));
 form.agentPhone.addEventListener('change', () => lookupAgent(true));
+form.agentPhone.addEventListener('blur', () => lookupAgent(true));
+// Chrome autofill doesn't always fire change events: check again whenever the service is chosen
+form.service.addEventListener('change', () => { if (!/Listing/.test(form.service.value) && form.agentEmail.value.trim() && form.agentPhone.value.trim()) lookupAgent(true); });
 
 // Representation → which side the client is on
 form.rep.addEventListener('change', () => {

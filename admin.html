@@ -689,8 +689,8 @@ function summaryPdfHtml() {
   const { who, dates } = summaryData(), navy = '#2E3466', grey = '#5E6676', gold = '#B5964F';
   const tr = (r, last) => '<tr><td style="padding:4px 0;border-bottom:1px solid #E3E5EA;color:' + grey + ';width:38%;vertical-align:top">' + esc(r[0]) + '</td><td style="padding:4px 0;border-bottom:1px solid #E3E5EA;vertical-align:top' + (last ? ';font-weight:bold;color:' + navy : '') + '">' + esc(r[1]) + '</td></tr>';
   const h2 = t => '<div style="font-size:11px;letter-spacing:2px;color:' + grey + ';font-weight:bold;margin:16px 0 4px">' + t + '</div>';
-  return '<html><head><meta charset="utf-8"></head><body style="font-family:Georgia,serif;font-size:13px;color:#1C2333;margin:0">' +
-    '<table style="width:100%;height:9.2in;border-collapse:collapse"><tr><td style="vertical-align:top">' +
+  return '<html><head><meta charset="utf-8"><style>@page{size:8.5in 11in;margin:0.5in 0.6in}</style></head><body style="font-family:Georgia,serif;font-size:13px;color:#1C2333;margin:0">' +
+    '<table style="width:100%;height:9.6in;border-collapse:collapse"><tr><td style="vertical-align:top">' +
     '<div style="text-align:center;color:' + navy + ';border-bottom:1px solid ' + gold + ';padding-bottom:8px;margin-bottom:12px"><div style="font-size:22px;letter-spacing:3px;font-weight:bold">ARK ROYAL</div>' +
     '<div style="font-size:20px;color:' + gold + ';font-style:italic">Closings</div><div style="font-size:8px;letter-spacing:3px;font-weight:bold;margin-top:2px">REAL ESTATE<br>TRANSACTION COORDINATION</div></div>' +
     '<div style="font-size:22px;color:' + navy + ';font-weight:bold">' + esc(where()) + '</div><div style="color:' + grey + '">Executed Contract Summary</div>' +
